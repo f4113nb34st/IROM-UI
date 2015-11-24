@@ -21,9 +21,9 @@
 		
 		protected Frame UIFrame;
 		
-		protected override void Tick()
+		protected override void Tick(double deltaTime)
 		{
-			UIFrame.Tick(1 / TickRate);
+			UIFrame.Tick(deltaTime);
 		}
 		
         protected override void Render(Image image)
