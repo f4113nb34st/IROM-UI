@@ -51,12 +51,17 @@
 		/// <summary>
 		/// True if this <see cref="Component"/> blocks input events from reaching obscured <see cref="Component"/>s.
 		/// </summary>
-		public bool Opaque = true;
+		public bool InputOpaque = true;
+		
+		/// <summary>
+		/// True if this <see cref="Component"/> is completely visually opaque.
+		/// </summary>
+		public bool RenderOpaque = true;
 		
 		/// <summary>
 		/// A "snap shot" of this component, re-rendered whenever dirty.
 		/// </summary>
-		protected Image Rendering = new Image(1, 1);
+		protected internal Image Rendering = new Image(1, 1);
 		
 		/// <summary>
 		/// Gets or sets the position of this <see cref="Component"/>. By default equal to the parent's position.
@@ -396,7 +401,13 @@
 					Render(Rendering);
 				}
 				image.SetClip(Clip.Value);
-				image.Blit(Rendering, (Point2D)Position.Value);
+				if(!RenderOpaque)
+				{
+					image.BlendBlit(Rendering, (Point2D)Position.Value);
+				}else
+				{
+					image.MaskBlit(Rendering, (Point2D)Position.Value);
+				}
 				image.ClearClip();
 			}else
 			{

@@ -107,7 +107,7 @@
 					bounds.Min = (Point2D)comp.Position.Value;
 					bounds.Max = (Point2D)comp.Size.Value + bounds.Min;
 					//if within component bounds
-					if(bounds.Contains(args.Coords))
+					if(bounds.Contains(args.Coords) && comp.Rendering[args.Coords - bounds.Min].A != 0)
 					{
 						//make coords relative to component
 						args2.Coords = args.Coords - bounds.Min;
@@ -116,7 +116,7 @@
 						//add to components waiting on release
 						MouseActiveComponents.Add(args.Button, comp);
 						//auto consume if opaque
-						if(comp.Opaque)
+						if(comp.InputOpaque)
 						{
 							//if eligible for keyboard focus, give it
 							if(comp.HasListeners(InputEventType.KPress) || comp.HasListeners(InputEventType.KRelease) || comp.HasListeners(InputEventType.CTyped))
@@ -158,7 +158,7 @@
 					bounds.Min = (Point2D)comp.Position.Value;
 					bounds.Max = (Point2D)comp.Size.Value + bounds.Min;
 					//if within component bounds
-					if(bounds.Contains(args.Coords))
+					if(bounds.Contains(args.Coords) && comp.Rendering[args.Coords - bounds.Min].A != 0)
 					{
 						//make coords relative to component
 						args2.Coords = args.Coords - bounds.Min;
@@ -167,7 +167,7 @@
 						//remove from active components (we don't care if it doesn't contain the element, it'll just do nothing)
 						ActiveComponents.Remove(comp);
 						//auto consume if opaque
-						if(comp.Opaque)
+						if(comp.InputOpaque)
 						{
 							args2.Consumed = true;
 						}
@@ -233,7 +233,7 @@
 					bounds.Min = (Point2D)comp.Position.Value;
 					bounds.Max = (Point2D)comp.Size.Value + bounds.Min;
 					//if within component bounds
-					if(bounds.Contains(args.Coords))
+					if(bounds.Contains(args.Coords) && comp.Rendering[args.Coords - bounds.Min].A != 0)
 					{
 						if(comp.HasListeners(InputEventType.MEnter) || comp.HasListeners(InputEventType.MExit))
 						{
@@ -259,7 +259,7 @@
 						//remove from active components (we don't care if it doesn't contain the element, it'll just do nothing)
 						ActiveComponents.Remove(comp);
 						//auto consume if opaque
-						if(comp.Opaque)
+						if(comp.InputOpaque)
 						{
 							args2.Consumed = true;
 						}
@@ -319,14 +319,14 @@
 					bounds.Min = (Point2D)comp.Position.Value;
 					bounds.Max = (Point2D)comp.Size.Value + bounds.Min;
 					//if within component bounds
-					if(bounds.Contains(args.Coords))
+					if(bounds.Contains(args.Coords) && comp.Rendering[args.Coords - bounds.Min].A != 0)
 					{
 						//make coords relative to component
 						args2.Coords = args.Coords - bounds.Min;
 						//call event
 						comp.InvokeMouseWheel(Parent, args2);
 						//auto consume if opaque
-						if(comp.Opaque)
+						if(comp.InputOpaque)
 						{
 							args2.Consumed = true;
 						}
@@ -359,14 +359,14 @@
 					bounds.Min = (Point2D)comp.Position.Value;
 					bounds.Max = (Point2D)comp.Size.Value + bounds.Min;
 					//if within component bounds
-					if(bounds.Contains(MouseCoords))
+					if(bounds.Contains(MouseCoords) && comp.Rendering[args.Coords - bounds.Min].A != 0)
 					{
 						//call event
 						comp.InvokeKeyPress(Parent, args2);
 						//add to components waiting on release
 						KeyboardActiveComponents.Add(args.Button, comp);
 						//auto consume if opaque
-						if(comp.Opaque)
+						if(comp.InputOpaque)
 						{
 							args2.Consumed = true;
 						}
@@ -409,14 +409,14 @@
 					bounds.Min = (Point2D)comp.Position.Value;
 					bounds.Max = (Point2D)comp.Size.Value + bounds.Min;
 					//if within component bounds
-					if(bounds.Contains(MouseCoords))
+					if(bounds.Contains(MouseCoords) && comp.Rendering[args.Coords - bounds.Min].A != 0)
 					{
 						//call event
 						comp.InvokeKeyRelease(Parent, args2);
 						//remove from active components (we don't care if it doesn't contain the element, it'll just do nothing)
 						ActiveComponents.Remove(comp);
 						//auto consume if opaque
-						if(comp.Opaque)
+						if(comp.InputOpaque)
 						{
 							args2.Consumed = true;
 						}
@@ -469,12 +469,12 @@
 					bounds.Min = (Point2D)comp.Position.Value;
 					bounds.Max = (Point2D)comp.Size.Value + bounds.Min;
 					//if within component bounds
-					if(bounds.Contains(MouseCoords))
+					if(bounds.Contains(MouseCoords) && comp.Rendering[args.Coords - bounds.Min].A != 0)
 					{
 						//call event
 						comp.InvokeCharTyped(Parent, args2);
 						//auto consume if opaque
-						if(comp.Opaque)
+						if(comp.InputOpaque)
 						{
 							args2.Consumed = true;
 						}

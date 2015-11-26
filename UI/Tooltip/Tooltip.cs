@@ -27,7 +27,7 @@
 		{
 			Visible = false;
 			ZCoord.Offset = 100;//always display on top
-			Opaque = false;
+			InputOpaque = false;
 			
 			Component root = this;
 			while(root.Parent != null)
