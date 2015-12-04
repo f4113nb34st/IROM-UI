@@ -76,6 +76,7 @@
 			set
 			{
 				BaseScreen = value;
+				BaseScreen.frame = this;
 				if(BaseScreen != null)
 				{
 					BaseScreen.Size.Pixels = new Vec2D(CurrentWindow.Width, CurrentWindow.Height);
@@ -88,6 +89,11 @@
 		/// Called when the <see cref="CurrentScreen"/> changes.
 		/// </summary>
 		public event EventHandler<Screen> OnScreenChange;
+		
+		/// <summary>
+		/// Called when the <see cref="CurrentScreen"/> becomes dirty.
+		/// </summary>
+		public event EventHandler OnDirtyChange;
 		
 		/// <summary>
 		/// Creates a new Frame for the given Window.
@@ -105,6 +111,11 @@
 			{
 				BaseWindow.OnResize -= OnResize;
 			}
+		}
+		
+		internal void MarkDirty()
+		{
+			if(OnDirtyChange != null) OnDirtyChange(this, EventArgs.Empty);
 		}
 		
 		/// <summary>

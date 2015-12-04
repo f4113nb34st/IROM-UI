@@ -44,6 +44,7 @@
 		public Panel(Component parent, bool bypass) : base(parent, bypass)
 		{
 			Color = new UIColor(this);
+			Color.OnChange += MarkMasterDirty;
 		}
 		
 		protected override void Render(Image image)

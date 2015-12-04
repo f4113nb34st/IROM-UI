@@ -6,12 +6,12 @@
 	/// <summary>
 	/// A <see cref="UIVariable{T, W}">UIVariable</see> for <see cref="Component"/> colors.
 	/// </summary>
-	public class UIColor : UIClippedVariable<RGB, double>
+	public class UIColor : UIClippedVariable<ARGB, double>
 	{
 		/// <summary>
 		/// The base color of this <see cref="UIColor"/>.
 		/// </summary>
-		public RGB BaseColor
+		public ARGB BaseColor
 		{
 			get{return Offset;}
 			set{Offset = value;}
@@ -19,23 +19,23 @@
 		
 		public UIColor(Component component)
 		{
-			MinValue = new RGB(0, 0, 0);
-			MaxValue = new RGB(255, 255, 255);
+			MinValue = new ARGB(0, 0, 0, 0);
+			MaxValue = new ARGB(255, 255, 255, 255);
 			//re-render parent on change
 			OnChange += ((sender, args) => component.Dirty = true);
 		}
 		
-		protected override RGB Modify(RGB currentValue, RGB parent, double weight)
+		protected override ARGB Modify(ARGB currentValue, ARGB parent, double weight)
 		{
 			return currentValue + (parent * weight);
 		}
 		
-		protected override RGB Clip(RGB value)
+		protected override ARGB Clip(ARGB value)
 		{
 			return value.Clip(MinValue, MaxValue);
 		}
 		
-		protected override bool Equals(RGB newValue, RGB oldValue)
+		protected override bool Equals(ARGB newValue, ARGB oldValue)
 		{
 			return newValue == oldValue;
 		}

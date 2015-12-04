@@ -132,7 +132,7 @@
 		/// <param name="y">The y coord.</param>
 		/// <param name="s">The string.</param>
 		/// <param name="color">The color.</param>
-		public void Draw(IROM.Util.Image image, int x, int y, String s, RGB color)
+		public void Draw(IROM.Util.Image image, int x, int y, String s, ARGB color)
 		{
 			for(int i = 0; i < s.Length; i++)
 			{
@@ -160,7 +160,7 @@
 		/// <param name="y">The y coord.</param>
 		/// <param name="c">The char.</param>
 		/// <param name="color">The color.</param>
-		public void Draw(Image image, int x, int y, char c, RGB color)
+		public void Draw(Image image, int x, int y, char c, ARGB color)
 		{
 			if(!Renders.ContainsKey(c))
 			{
@@ -171,7 +171,7 @@
 			DrawRender(image, new Point2D(x, y), Renders[c], color);
 		}
 		
-		private void DrawRender(Image image, Point2D position, FontRender render, RGB color)
+		private void DrawRender(Image image, Point2D position, FontRender render, ARGB color)
 		{
 			Rectangle view = VectorUtil.Overlap((Rectangle)image.Size, ((Rectangle)render.Size) + position, image.GetClip());
 			for(int i = view.Min.X; i < view.Max.X; i++)
@@ -179,7 +179,7 @@
 				for(int j = view.Min.Y; j < view.Max.Y; j++)
 				{
 					float alpha = render[i - position.X, j - position.Y];
-					image[i, j] = (color * alpha) + (image[i, j] * (1 - alpha));
+					image[i, j] &= new ARGB((byte)(color.A * alpha), color.RGB);
 				}
 			}
 		}

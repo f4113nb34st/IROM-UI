@@ -12,11 +12,15 @@
 		protected UICore(String title) : base(title)
         {
 			UIFrame = new Frame(WindowObj);
+			UIFrame.OnDirtyChange += (sender, e) => MarkDirty();
+			AutoDirty = false;
 		}
 		
 		protected UICore(String title, double tickRate) : base(title, tickRate)
         {
 			UIFrame = new Frame(WindowObj);
+			UIFrame.OnDirtyChange += (sender, e) => MarkDirty();
+			AutoDirty = false;
 		}
 		
 		protected Frame UIFrame;

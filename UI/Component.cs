@@ -24,23 +24,72 @@
 		private UISize size;
 		private UIClip clip;
 		private bool isFocused;
+		private bool visible = true;
+		private bool hidden = false;
+		private volatile bool dirty = true;
+		
+		/// <summary>
+		/// The master <see cref="Frame"/>.
+		/// </summary>
+		public virtual Frame MasterFrame
+		{
+			get
+			{
+				return Parent != null ? Parent.MasterFrame : null;
+			}
+		}
+		
+		/// <summary>
+		/// The master <see cref="Frame"/>.
+		/// </summary>
+		public virtual Screen MasterScreen
+		{
+			get
+			{
+				return Parent != null ? Parent.MasterScreen : null;
+			}
+		}
 		
 		/// <summary>
 		/// False if this <see cref="Component"/> should not be rendered. Hides children as well.
 		/// Also prevents receiving input events.
 		/// </summary>
-		public bool Visible = true;
+		public bool Visible
+		{
+			get{return visible;}
+			set
+			{
+				visible = value;
+				MarkMasterDirty(this, EventArgs.Empty);
+			}
+		}
 		
 		/// <summary>
 		/// True if this <see cref="Component"/> should not be rendered. Does not hide children.
 		/// Also prevents receiving input events.
 		/// </summary>
-		public bool Hidden = false;
+		public bool Hidden
+		{
+			get{return hidden;}
+			set
+			{
+				hidden = value;
+				MarkMasterDirty(this, EventArgs.Empty);
+			}
+		}
 		
 		/// <summary>
 		/// True if this <see cref="Component"/> should be re-rendered next frame.
 		/// </summary>
-		public volatile bool Dirty = true;
+		public virtual bool Dirty
+		{
+			get{return dirty;}
+			set
+			{
+				dirty = value;
+				if(dirty) MarkMasterDirty(this, EventArgs.Empty);
+			}
+		}
 		
 		/// <summary>
 		/// True if the component is rendered to a buffer and blitted to the screen instead of directly rendered.
@@ -49,14 +98,24 @@
 		public bool Buffered = true;
 		
 		/// <summary>
+		/// True if this <see cref="Component"/> is completely visually opaque.
+		/// </summary>
+		public bool Opaque = true;
+		
+		/// <summary>
+		/// False if this <see cref="Component"/> cannot receive input events. Hides children as well.
+		/// </summary>
+		public bool InputVisible = true;
+		
+		/// <summary>
+		/// False if this <see cref="Component"/> cannot receive input events. Does not hide children.
+		/// </summary>
+		public bool InputHidden = false;
+		
+		/// <summary>
 		/// True if this <see cref="Component"/> blocks input events from reaching obscured <see cref="Component"/>s.
 		/// </summary>
 		public bool InputOpaque = true;
-		
-		/// <summary>
-		/// True if this <see cref="Component"/> is completely visually opaque.
-		/// </summary>
-		public bool RenderOpaque = true;
 		
 		/// <summary>
 		/// A "snap shot" of this component, re-rendered whenever dirty.
@@ -194,6 +253,11 @@
 		public event EventHandler OnPostRender;
 		
 		/// <summary>
+		/// Invoked during a tick.
+		/// </summary>
+		public event EventHandler<double> OnTick;
+		
+		/// <summary>
 		/// Invoked whenever a <see cref="MouseButton"/> is pressed.
 		/// A mouse press event on this <see cref="Component"/> happens whenever the mouse is 
 		/// pressed within the bounds of this <see cref="Component"/> and there
@@ -297,9 +361,13 @@
 		protected Component(Component parent, bool bypass)
 		{
 			Position = new UIPosition();
+			Position.OnChange += MarkMasterDirty;
 			ZCoord = new UIZCoord();
+			ZCoord.OnChange += MarkMasterDirty;
 			Size = new UISize();
+			Size.OnChange += MarkMasterDirty;
 			Clip = new UIClip();
+			Clip.OnChange += MarkMasterDirty;
 			
 			Position.OwnSize = Size;
 			
@@ -324,6 +392,12 @@
 			}
 		}
 		
+		protected void MarkMasterDirty(object sender, EventArgs e)
+		{
+			Frame frame = MasterFrame;
+			if(frame != null) frame.MarkDirty();
+		}
+		
 		/// <summary>
 		/// Returns the parent that should be used for the given child. 
 		/// Used by components like buttons to hand parentage off to their content panels.
@@ -343,6 +417,7 @@
 		/// <param name="dt">The time since the last tick.</param>
 		protected internal virtual void Tick(double dt)
 		{
+			if(OnTick != null) OnTick(this, dt);
 			TickChildren(dt);
 		}
 		
@@ -390,10 +465,10 @@
 			PreRender();
 			if(Buffered)
 			{
-				if(Rendering.Width != Math.Max(1, (int)Size.Value.X) || Rendering.Height != Math.Max(1, (int)Size.Value.Y))
+				if(Rendering.Width != Math.Max(1, (int)Math.Round(Size.Value.X)) || Rendering.Height != Math.Max(1, (int)Math.Round(Size.Value.Y)))
 				{
 					Dirty = true;
-					Rendering.Resize(Math.Max(1, (int)Size.Value.X), Math.Max(1, (int)Size.Value.Y));
+					Rendering.Resize(Math.Max(1, (int)Math.Round(Size.Value.X)), Math.Max(1, (int)Math.Round(Size.Value.Y)));
 				}
 				if(Dirty)
 				{
@@ -401,7 +476,7 @@
 					Render(Rendering);
 				}
 				image.SetClip(Clip.Value);
-				if(!RenderOpaque)
+				if(!Opaque)
 				{
 					image.BlendBlit(Rendering, (Point2D)Position.Value);
 				}else

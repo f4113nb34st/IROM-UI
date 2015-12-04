@@ -27,6 +27,19 @@
 			}
 		}
 		
+		public override string Text
+		{
+			get
+			{
+				return base.Text;
+			}
+			set
+			{
+				base.Text = value;
+				MarkerPosition = Math.Min(MarkerPosition, Text.Length);
+			}
+		}
+		
 		/// <summary>
 		/// The position of the flashing |.
 		/// </summary>
@@ -91,12 +104,12 @@
 			{
 				if(MarkerPosition > 0)
 				{
-					Text = Text.Substring(0, MarkerPosition - 1) + Text.Substring(MarkerPosition);
+					base.Text = Text.Substring(0, MarkerPosition - 1) + Text.Substring(MarkerPosition);
 					MarkerPosition--;
 				}
 			}else
 			{
-				Text = Text.Substring(0, MarkerPosition) + c + Text.Substring(MarkerPosition);
+				base.Text = Text.Substring(0, MarkerPosition) + c + Text.Substring(MarkerPosition);
 				MarkerPosition++;
 			}
 			if(OnTextChange != null) OnTextChange(this, Text);

@@ -27,7 +27,7 @@
 		/// <summary>
 		/// The text of this <see cref="Label"/>.
 		/// </summary>
-		public string Text
+		public virtual string Text
 		{
 			get
 			{
@@ -67,6 +67,11 @@
 		/// The horizontal justification method.
 		/// </summary>
 		public Justify HorizontalJustify = Justify.MIDDLE;
+		
+		/// <summary>
+		/// Override for the length of the text. If this value is non negative, uses it instead of the text length if it is greater.
+		/// </summary>
+		public int lengthOverride = -1;
 		
 		/// <summary>
 		/// Gets or sets the text color of this <see cref="Component"/>.
@@ -130,7 +135,9 @@
 		{
 			Text = text;
 			TextColor = new UIColor(this);
+			TextColor.OnChange += MarkMasterDirty;
 			BackColor = new UIColor(this);
+			BackColor.OnChange += MarkMasterDirty;
 		}
 		
 		protected override void Render(Image image)
@@ -149,7 +156,7 @@
 			}
 			if(!LockFont)
 			{
-				Point2D idealSize = new Point2D(image.Width / length, image.Height);
+				Point2D idealSize = new Point2D(image.Width / Math.Max(length, lengthOverride), image.Height);
 				if(CurrentFont == null || CurrentFont.Size != idealSize)
 				{
 					CurrentFont = new Font(idealSize, Style);

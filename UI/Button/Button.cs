@@ -147,9 +147,13 @@
 		public Button(Component parent, bool bypass) : base(parent, bypass)
 		{
 			Border = new UISize();
+			Border.OnChange += MarkMasterDirty;
 			ForeColor = new UIColor(this);
+			ForeColor.OnChange += MarkMasterDirty;
 			BackColor = new UIColor(this);
+			BackColor.OnChange += MarkMasterDirty;
 			HoverColor = new UIColor(this);
+			HoverColor.OnChange += MarkMasterDirty;
 			
 			//init border to 5%
 			Border.ParentSize = Size;
@@ -204,7 +208,7 @@
 			int height = image.Height;
 			int xBorder = (int)Border.Value.X;
 			int yBorder = (int)Border.Value.Y;
-			RGB color = Hovered ? HoverColor.Value : ForeColor.Value;
+			ARGB color = Hovered ? HoverColor.Value : ForeColor.Value;
 			
 			if(xBorder > 0 && yBorder > 0)
 			{
@@ -241,7 +245,7 @@
 			image.FillRectangle(new Rectangle(xBorder, yBorder, width - (xBorder * 2), height - (yBorder * 2)), color);
 		}
 		
-		private void FillXSide(Image image, bool top, int minX, int minY, int maxX, int maxY, int xBorder, RGB color)
+		private void FillXSide(Image image, bool top, int minX, int minY, int maxX, int maxY, int xBorder, ARGB color)
 		{
 			for(int i = minX; i < maxX; i++)
 			{
@@ -255,7 +259,7 @@
 			}
 		}
 		
-		private void FillYSide(Image image, bool top, int minX, int minY, int maxX, int maxY, int yBorder, RGB color)
+		private void FillYSide(Image image, bool top, int minX, int minY, int maxX, int maxY, int yBorder, ARGB color)
 		{
 			for(int j = minY; j < maxY; j++)
 			{
@@ -269,7 +273,7 @@
 			}
 		}
 		
-		private void FillCorner(Image image, bool topX, bool topY, int minX, int minY, int maxX, int maxY, int xBorder, int yBorder, RGB color)
+		private void FillCorner(Image image, bool topX, bool topY, int minX, int minY, int maxX, int maxY, int xBorder, int yBorder, ARGB color)
 		{
 			for(int i = minX; i < maxX; i++)
 			{

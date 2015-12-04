@@ -8,6 +8,24 @@
 	/// </summary>
 	public class Screen : Panel
 	{
+		protected internal Frame frame;
+		
+		public override Frame MasterFrame
+		{
+			get 
+			{
+				return frame;
+			}
+		}
+		
+		public override Screen MasterScreen
+		{
+			get 
+			{
+				return this;
+			}
+		}
+		
 		public Screen() : base(null)
 		{
 			//position and z are 0

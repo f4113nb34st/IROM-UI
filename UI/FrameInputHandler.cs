@@ -107,7 +107,7 @@
 					bounds.Min = (Point2D)comp.Position.Value;
 					bounds.Max = (Point2D)comp.Size.Value + bounds.Min;
 					//if within component bounds
-					if(bounds.Contains(args.Coords) && comp.Rendering[args.Coords - bounds.Min].A != 0)
+					if(bounds.Contains(args.Coords))
 					{
 						//make coords relative to component
 						args2.Coords = args.Coords - bounds.Min;
@@ -158,7 +158,7 @@
 					bounds.Min = (Point2D)comp.Position.Value;
 					bounds.Max = (Point2D)comp.Size.Value + bounds.Min;
 					//if within component bounds
-					if(bounds.Contains(args.Coords) && comp.Rendering[args.Coords - bounds.Min].A != 0)
+					if(bounds.Contains(args.Coords))
 					{
 						//make coords relative to component
 						args2.Coords = args.Coords - bounds.Min;
@@ -233,7 +233,7 @@
 					bounds.Min = (Point2D)comp.Position.Value;
 					bounds.Max = (Point2D)comp.Size.Value + bounds.Min;
 					//if within component bounds
-					if(bounds.Contains(args.Coords) && comp.Rendering[args.Coords - bounds.Min].A != 0)
+					if(bounds.Contains(args.Coords))
 					{
 						if(comp.HasListeners(InputEventType.MEnter) || comp.HasListeners(InputEventType.MExit))
 						{
@@ -319,7 +319,7 @@
 					bounds.Min = (Point2D)comp.Position.Value;
 					bounds.Max = (Point2D)comp.Size.Value + bounds.Min;
 					//if within component bounds
-					if(bounds.Contains(args.Coords) && comp.Rendering[args.Coords - bounds.Min].A != 0)
+					if(bounds.Contains(args.Coords))
 					{
 						//make coords relative to component
 						args2.Coords = args.Coords - bounds.Min;
@@ -359,7 +359,7 @@
 					bounds.Min = (Point2D)comp.Position.Value;
 					bounds.Max = (Point2D)comp.Size.Value + bounds.Min;
 					//if within component bounds
-					if(bounds.Contains(MouseCoords) && comp.Rendering[args.Coords - bounds.Min].A != 0)
+					if(bounds.Contains(MouseCoords))
 					{
 						//call event
 						comp.InvokeKeyPress(Parent, args2);
@@ -409,7 +409,7 @@
 					bounds.Min = (Point2D)comp.Position.Value;
 					bounds.Max = (Point2D)comp.Size.Value + bounds.Min;
 					//if within component bounds
-					if(bounds.Contains(MouseCoords) && comp.Rendering[args.Coords - bounds.Min].A != 0)
+					if(bounds.Contains(MouseCoords))
 					{
 						//call event
 						comp.InvokeKeyRelease(Parent, args2);
@@ -469,7 +469,7 @@
 					bounds.Min = (Point2D)comp.Position.Value;
 					bounds.Max = (Point2D)comp.Size.Value + bounds.Min;
 					//if within component bounds
-					if(bounds.Contains(MouseCoords) && comp.Rendering[args.Coords - bounds.Min].A != 0)
+					if(bounds.Contains(MouseCoords))
 					{
 						//call event
 						comp.InvokeCharTyped(Parent, args2);
@@ -502,9 +502,9 @@
 		/// <param name="type">The type of event</param>
 		private void RecursiveEventAdd(Component comp, ICollection<Component> collection, InputEventType type)
 		{
-			if(comp.Visible)
+			if(comp.InputVisible)
 			{
-				if(!comp.Hidden && comp.HasListeners(type))
+				if(!comp.InputHidden && comp.HasListeners(type))
 				{
 					collection.Add(comp);
 				}

@@ -29,18 +29,14 @@
 			ZCoord.Offset = 100;//always display on top
 			InputOpaque = false;
 			
-			Component root = this;
-			while(root.Parent != null)
-			{
-				root = root.Parent;
-			}
+			Component screen = MasterScreen;
 			
 			parent.OnMouseEnter += (sender, e) => TimeLeft = HoverTime;
 			parent.OnMouseExit += (sender, e) => TimeLeft = double.PositiveInfinity;
 			parent.OnMouseMove += (sender, e) =>
 			{
-				bool flipX = parent.Position.Value.X + e.Coords.X + 16 + Size.Value.X > root.Size.Value.X;
-				bool flipY = parent.Position.Value.Y + e.Coords.Y + 16 + Size.Value.Y > root.Size.Value.Y;
+				bool flipX = parent.Position.Value.X + e.Coords.X + 16 + Size.Value.X > screen.Size.Value.X;
+				bool flipY = parent.Position.Value.Y + e.Coords.Y + 16 + Size.Value.Y > screen.Size.Value.Y;
 				
 				Position.Pixels = new Vec2D(e.Coords.X + (!flipX ? 16 : 0), e.Coords.Y + (!flipY ? 16 : 0));
 				Position.RatioOwn = new Vec2D(!flipX ? 0 : -1, !flipY ? 0 : -1);

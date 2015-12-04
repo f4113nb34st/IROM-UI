@@ -78,7 +78,9 @@
 		public Divider(Component parent, bool bypass) : base(parent, bypass)
 		{
 			MinColor = new UIColor(this);
+			MinColor.OnChange += MarkMasterDirty;
 			MaxColor = new UIColor(this);
+			MaxColor.OnChange += MarkMasterDirty;
 		}
 		
 		protected override void Render(Image image)
@@ -91,7 +93,7 @@
 				for(int x = 0; x < image.Width; x++)
 				{
 					double mu;
-					RGB color;
+					ARGB color;
 					//if min side
 					if(x < (maxX - x))
 					{
@@ -118,7 +120,7 @@
 				for(int y = 0; y < image.Height; y++)
 				{
 					double mu;
-					RGB color;
+					ARGB color;
 					//if min side
 					if(y < (maxY - y))
 					{
