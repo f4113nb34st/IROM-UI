@@ -258,6 +258,11 @@
 		public event EventHandler<double> OnTick;
 		
 		/// <summary>
+		/// Invoked when this <see cref="Component"/> is destroyed.
+		/// </summary>
+		public event EventHandler OnDestroy;
+		
+		/// <summary>
 		/// Invoked whenever a <see cref="MouseButton"/> is pressed.
 		/// A mouse press event on this <see cref="Component"/> happens whenever the mouse is 
 		/// pressed within the bounds of this <see cref="Component"/> and there
@@ -390,6 +395,11 @@
 				ZCoord.ParentZ = parent.ZCoord;
 				Clip.ParentClip = parent.Clip;
 			}
+		}
+		
+		~Component()
+		{
+			OnDestroy(this, EventArgs.Empty);
 		}
 		
 		protected void MarkMasterDirty(object sender, EventArgs e)
