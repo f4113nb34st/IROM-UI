@@ -37,13 +37,13 @@
 			
 			Component screen = MasterScreen;
 			
-			Dynx<bool> flipX = () => (parent.Position.Value.X + mouseCoords.Value.X + 16 + Size.Value.X) > screen.Size.Value.X;
-			Dynx<bool> flipY = () => (parent.Position.Value.Y + mouseCoords.Value.Y + 16 + Size.Value.Y) > screen.Size.Value.Y;
+			Dynx<bool> flipX = new Dynx<bool>(() => (parent.Position.Value.X + mouseCoords.Value.X + 16 + Size.Value.X) > screen.Size.Value.X);
+			Dynx<bool> flipY = new Dynx<bool>(() => (parent.Position.Value.Y + mouseCoords.Value.Y + 16 + Size.Value.Y) > screen.Size.Value.Y);
 			
 			Position.Exp = () =>
 			{
-				double x = mouseCoords.Value.X + 16 + ((!flipX ? 0 : -1) * (Size.Value.X + 16));
-				double y = mouseCoords.Value.Y + 16 + ((!flipY ? 0 : -1) * (Size.Value.Y + 16));
+				double x = mouseCoords.Value.X + 16 + ((!flipX.Value ? 0 : -1) * (Size.Value.X + 16));
+				double y = mouseCoords.Value.Y + 16 + ((!flipY.Value ? 0 : -1) * (Size.Value.Y + 16));
 				return new Vec2D(x, y);
 			};
 			

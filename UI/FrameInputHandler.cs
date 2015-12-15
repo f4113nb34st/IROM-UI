@@ -20,7 +20,7 @@
 		/// <summary>
 		/// A simple set of <see cref="Component"/>s to pass events to, sorted by z value. (highers values first so they get events early)
 		/// </summary>
-		private readonly SortedSet<Component> EventSet = new SortedSet<Component>(Comparer<Component>.Create((x, y) => (((double)x.ZCoord < (double)y.ZCoord) ? 1 : -1)));
+		private readonly SortedSet<Component> EventSet = new SortedSet<Component>(Comparer<Component>.Create((x, y) => ((x.ZCoord.Value < y.ZCoord.Value) ? 1 : -1)));
 		
 		/// <summary>
 		/// The set of active components that are guaranteed an event call before the method returns.
@@ -104,8 +104,8 @@
 				foreach(Component comp in EventSet)
 				{
 					//set bounds
-					bounds.Min = (Point2D)comp.Position;
-					bounds.Max = (Point2D)comp.Size + bounds.Min;
+					bounds.Min = (Point2D)comp.Position.Value;
+					bounds.Max = (Point2D)comp.Size.Value + bounds.Min;
 					//if within component bounds
 					if(bounds.Contains(args.Coords))
 					{
@@ -155,8 +155,8 @@
 				foreach(Component comp in EventSet)
 				{
 					//set bounds
-					bounds.Min = (Point2D)comp.Position;
-					bounds.Max = (Point2D)comp.Size + bounds.Min;
+					bounds.Min = (Point2D)comp.Position.Value;
+					bounds.Max = (Point2D)comp.Size.Value + bounds.Min;
 					//if within component bounds
 					if(bounds.Contains(args.Coords))
 					{
@@ -186,8 +186,8 @@
 					if(comp.HasListeners(InputEventType.MRelease))
 					{
 						//set bounds
-						bounds.Min = (Point2D)comp.Position;
-						bounds.Max = (Point2D)comp.Size + bounds.Min;
+						bounds.Min = (Point2D)comp.Position.Value;
+						bounds.Max = (Point2D)comp.Size.Value + bounds.Min;
 						//make coords relative to component
 						args2.Coords = args.Coords - bounds.Min;
 						//call event
@@ -230,8 +230,8 @@
 				foreach(Component comp in EventSet)
 				{
 					//set bounds
-					bounds.Min = (Point2D)comp.Position;
-					bounds.Max = (Point2D)comp.Size + bounds.Min;
+					bounds.Min = (Point2D)comp.Position.Value;
+					bounds.Max = (Point2D)comp.Size.Value + bounds.Min;
 					//if within component bounds
 					if(bounds.Contains(args.Coords))
 					{
@@ -278,8 +278,8 @@
 					if(comp.HasListeners(InputEventType.MMove))
 					{
 						//set bounds
-						bounds.Min = (Point2D)comp.Position;
-						bounds.Max = (Point2D)comp.Size + bounds.Min;
+						bounds.Min = (Point2D)comp.Position.Value;
+						bounds.Max = (Point2D)comp.Size.Value + bounds.Min;
 						//make coords relative to component
 						args2.Coords = args.Coords - bounds.Min;
 						//call event
@@ -316,8 +316,8 @@
 				foreach(Component comp in EventSet)
 				{
 					//set bounds
-					bounds.Min = (Point2D)comp.Position;
-					bounds.Max = (Point2D)comp.Size + bounds.Min;
+					bounds.Min = (Point2D)comp.Position.Value;
+					bounds.Max = (Point2D)comp.Size.Value + bounds.Min;
 					//if within component bounds
 					if(bounds.Contains(args.Coords))
 					{
@@ -356,8 +356,8 @@
 				foreach(Component comp in EventSet)
 				{
 					//set bounds
-					bounds.Min = (Point2D)comp.Position;
-					bounds.Max = (Point2D)comp.Size + bounds.Min;
+					bounds.Min = (Point2D)comp.Position.Value;
+					bounds.Max = (Point2D)comp.Size.Value + bounds.Min;
 					//if within component bounds
 					if(bounds.Contains(MouseCoords))
 					{
@@ -406,8 +406,8 @@
 				foreach(Component comp in EventSet)
 				{
 					//set bounds
-					bounds.Min = (Point2D)comp.Position;
-					bounds.Max = (Point2D)comp.Size + bounds.Min;
+					bounds.Min = (Point2D)comp.Position.Value;
+					bounds.Max = (Point2D)comp.Size.Value + bounds.Min;
 					//if within component bounds
 					if(bounds.Contains(MouseCoords))
 					{
@@ -466,8 +466,8 @@
 				foreach(Component comp in EventSet)
 				{
 					//set bounds
-					bounds.Min = (Point2D)comp.Position;
-					bounds.Max = (Point2D)comp.Size + bounds.Min;
+					bounds.Min = (Point2D)comp.Position.Value;
+					bounds.Max = (Point2D)comp.Size.Value + bounds.Min;
 					//if within component bounds
 					if(bounds.Contains(MouseCoords))
 					{

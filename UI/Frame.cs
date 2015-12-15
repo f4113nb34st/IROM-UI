@@ -23,7 +23,7 @@
 		/// <summary>
 		/// A simple set of <see cref="Component"/>s to render, sorted by z value. (lower values first so they are rendered below)
 		/// </summary>
-		private readonly SortedSet<Component> RenderSet = new SortedSet<Component>(Comparer<Component>.Create((x, y) => (((double)x.ZCoord > (double)y.ZCoord) ? 1 : -1)));
+		private readonly SortedSet<Component> RenderSet = new SortedSet<Component>(Comparer<Component>.Create((x, y) => ((x.ZCoord.Value > y.ZCoord.Value) ? 1 : -1)));
 		
 		/// <summary>
 		/// The parent window.

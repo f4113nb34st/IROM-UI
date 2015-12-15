@@ -406,7 +406,7 @@
 					Dirty = false;
 					Render(Rendering);
 				}
-				image.SetClip(Clip);
+				image.SetClip(Clip.Value);
 				if(!Opaque)
 				{
 					image.BlendBlit(Rendering, (Point2D)Position.Value);
@@ -417,7 +417,7 @@
 				image.ClearClip();
 			}else
 			{
-				image.SetClip(Clip);
+				image.SetClip(Clip.Value);
 				Render(image);
 				image.ClearClip();
 			}

@@ -92,7 +92,7 @@
 		
 		protected void Render(Image image, bool useMarker, int markerLoc = -1)
 		{
-			image.Fill(BackColor);
+			image.Fill(BackColor.Value);
 			
 			int length = Text.Value.Length;
 			if(length == 0)

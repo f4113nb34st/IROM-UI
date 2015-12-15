@@ -76,13 +76,13 @@
 			
 			Content = new Panel(this, true);
 			//init color
-			Content.Color.Exp = () => ForeColor;
+			Content.Color.Exp = () => ForeColor.Value;
 			//center in button
-			Content.Position += (Size - Content.Size) / 2;
+			Content.Position.Exp = () => (Size.Value - Content.Size.Value) / 2;
 			//slightly offset z coord
-			Content.ZCoord += .001;
+			Content.ZCoord.Exp = () => ZCoord.Value + .001;
 			//reduce size by twice border
-			Content.Size -= Border * 2;
+			Content.Size.Exp = () => Size.Value - Border.Value * 2;
 			
 			Content.Hidden = true;
 			
@@ -99,7 +99,7 @@
 				if(!DisableHoverColor) 
 				{
 					Hovered = true;
-					Content.Color = HoverColor;
+					Content.Color.Exp = () => HoverColor.Value;
 				}
 			};
 			OnMouseExit += (sender, e) => 
@@ -107,7 +107,7 @@
 				if(!DisableHoverColor) 
 				{
 					Hovered = false;
-					Content.Color = ForeColor;
+					Content.Color.Exp = () => ForeColor.Value;
 				}
 			};
 		}
