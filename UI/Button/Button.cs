@@ -2,6 +2,7 @@
 {
 	using System;
 	using IROM.Util;
+	using IROM.Dynamix;
 	
 	/// <summary>
 	/// A Button is a component that can be pressed.
@@ -18,11 +19,25 @@
 		/// </summary>
 		public Interpolation.InterpFunction EdgeInterpolation = Interpolation.Linear;
 		
-		//the backing variable classes
-		private UISize border;
-		private UIColor foreColor;
-		private UIColor backColor;
-		private UIColor hoverColor;
+		/// <summary>
+		/// The border size of this <see cref="Component"/>.
+		/// </summary>
+		public readonly Dynx<Vec2D> Border = new Dynx<Vec2D>();
+		
+		/// <summary>
+		/// The fore color of this <see cref="Component"/>.
+		/// </summary>
+		public readonly Dynx<ARGB> ForeColor = new Dynx<ARGB>();
+		
+		/// <summary>
+		/// The back color of this <see cref="Component"/>.
+		/// </summary>
+		public readonly Dynx<ARGB> BackColor = new Dynx<ARGB>();
+		
+		/// <summary>
+		/// The hover color of this <see cref="Component"/>.
+		/// </summary>
+		public readonly Dynx<ARGB> HoverColor = new Dynx<ARGB>();
 		
 		/// <summary>
 		/// True if the edges should be rounded, not square.
@@ -43,102 +58,6 @@
 			protected set;
 		}
 		
-		/// <summary>
-		/// Gets or sets the border size of this <see cref="Component"/>.
-		/// </summary>
-		public UISize Border
-		{
-			get
-			{
-				return border;
-			}
-			set
-			{
-				if(border != value)
-				{
-					border = value;
-					if(OnBorderChange != null) OnBorderChange(this, border);
-				}
-			}
-		}
-		
-		/// <summary>
-		/// Gets or sets the fore color of this <see cref="Component"/>.
-		/// </summary>
-		public UIColor ForeColor
-		{
-			get
-			{
-				return foreColor;
-			}
-			set
-			{
-				if(foreColor != value)
-				{
-					foreColor = value;
-					if(OnForeColorChange != null) OnForeColorChange(this, foreColor);
-				}
-			}
-		}
-		
-		/// <summary>
-		/// Gets or sets the back color of this <see cref="Component"/>.
-		/// </summary>
-		public UIColor BackColor
-		{
-			get
-			{
-				return backColor;
-			}
-			set
-			{
-				if(backColor != value)
-				{
-					backColor = value;
-					if(OnBackColorChange != null) OnBackColorChange(this, backColor);
-				}
-			}
-		}
-		
-		/// <summary>
-		/// Gets or sets the hover color of this <see cref="Component"/>.
-		/// </summary>
-		public UIColor HoverColor
-		{
-			get
-			{
-				return hoverColor;
-			}
-			set
-			{
-				if(hoverColor != value)
-				{
-					hoverColor = value;
-					if(OnHoverColorChange != null) OnHoverColorChange(this, hoverColor);
-				}
-			}
-		}
-		
-		/// <summary>
-		/// Invoked whenever <see cref="Border"/> changes.
-		/// </summary>
-		public event EventHandler<UISize> OnBorderChange;
-		
-		/// <summary>
-		/// Invoked whenever <see cref="ForeColor"/> changes.
-		/// </summary>
-		public event EventHandler<UIColor> OnForeColorChange;
-		
-		/// <summary>
-		/// Invoked whenever <see cref="BackColor"/> changes.
-		/// </summary>
-		public event EventHandler<UIColor> OnBackColorChange;
-		
-		/// <summary>
-		/// Invoked whenever <see cref="HoverColor"/> changes.
-		/// </summary>
-		public event EventHandler<UIColor> OnHoverColorChange;
-		
 		public Button(Component parent) : this(parent, false)
 		{
 			
@@ -146,35 +65,33 @@
 		
 		public Button(Component parent, bool bypass) : base(parent, bypass)
 		{
-			Border = new UISize();
-			Border.OnChange += MarkMasterDirty;
-			ForeColor = new UIColor(this);
-			ForeColor.OnChange += MarkMasterDirty;
-			BackColor = new UIColor(this);
-			BackColor.OnChange += MarkMasterDirty;
-			HoverColor = new UIColor(this);
-			HoverColor.OnChange += MarkMasterDirty;
-			
 			//init border to 5%
-			Border.ParentSize = Size;
-			Border.Ratio = new Vec2D(.05, .05);
+			Border.Exp = () => Size.Value * .05;
+			
+			ForeColor.Value = RGB.White;
+			BackColor.Value = RGB.Black;
+			
 			//init hover color to average of fore and back
-			HoverColor.SetParent("ForeColor", ForeColor, .5);
-			HoverColor.SetParent("BackColor", BackColor, .5);
+			HoverColor.Exp = () => (ForeColor.Value / 2) + (BackColor.Value / 2);
 			
 			Content = new Panel(this, true);
 			//init color
-			Content.Color.SetParent("Parent", ForeColor, 1);
+			Content.Color.Exp = () => ForeColor;
 			//center in button
-			Content.Position.Ratio = new Vec2D(.5, .5);
-			Content.Position.RatioOwn = new Vec2D(-.5, -.5);
+			Content.Position += (Size - Content.Size) / 2;
 			//slightly offset z coord
-			Content.ZCoord.Offset = .001;
+			Content.ZCoord += .001;
 			//reduce size by twice border
-			Content.Size.SetParent("Border", Border, new Vec2D(-2, -2));
-			//re-render content on fore color change
-			ForeColor.OnChange += ((sender, args) => Content.Dirty = true);
+			Content.Size -= Border * 2;
+			
 			Content.Hidden = true;
+			
+			Border.Subscribe(MarkDirty);
+			ForeColor.Subscribe(MarkDirty);
+			BackColor.Subscribe(MarkDirty);
+			HoverColor.Subscribe(MarkDirty);
+			//re-render content on fore color change
+			ForeColor.Subscribe(Content.MarkDirty);
 			
 			//exit when color changes
 			OnMouseEnter += (sender, e) => 
@@ -182,8 +99,7 @@
 				if(!DisableHoverColor) 
 				{
 					Hovered = true;
-					Content.Color.SetParent("Parent", HoverColor);
-					Dirty = true;
+					Content.Color = HoverColor;
 				}
 			};
 			OnMouseExit += (sender, e) => 
@@ -191,8 +107,7 @@
 				if(!DisableHoverColor) 
 				{
 					Hovered = false;
-					Content.Color.SetParent("Parent", ForeColor);
-					Dirty = true;
+					Content.Color = ForeColor;
 				}
 			};
 		}

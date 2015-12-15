@@ -27,32 +27,14 @@
 			}
 		}
 		
-		public override string Text
-		{
-			get
-			{
-				return base.Text;
-			}
-			set
-			{
-				base.Text = value;
-				MarkerPosition = Math.Min(MarkerPosition, Text.Length);
-			}
-		}
-		
 		/// <summary>
 		/// The position of the flashing |.
 		/// </summary>
 		public volatile int MarkerPosition;
 		
-		/// <summary>
-		/// Invoked after whenever the text changes.
-		/// </summary>
-		public event EventHandler<string> OnTextChange;
-		
 		public TextBox(Component parent, string txt) : this(parent, false, txt)
 		{
-			
+			Text.Subscribe(() => MarkerPosition = Math.Min(MarkerPosition, Text.Value.Length));
 		}
 		
 		public TextBox(Component parent, bool bypass, string txt) : base(parent, bypass, txt)
@@ -66,7 +48,7 @@
 					Dirty = true;
 				}
 			};
-			MarkerPosition = Text.Length;
+			MarkerPosition = Text.Value.Length;
 			//dummy mouse press handler so we get focus
 			OnMousePress += (sender, e) => {};
 			OnKeyPress += (sender, args) =>
@@ -82,7 +64,7 @@
 				}else
 				if(args.Button == KeyboardButton.RIGHT)
 				{
-					if(MarkerPosition < Text.Length)
+					if(MarkerPosition < Text.Value.Length)
 					{
 						MarkerPosition++;
 						Dirty = true;
@@ -104,16 +86,14 @@
 			{
 				if(MarkerPosition > 0)
 				{
-					base.Text = Text.Substring(0, MarkerPosition - 1) + Text.Substring(MarkerPosition);
 					MarkerPosition--;
+					Text.Value = Text.Value.Substring(0, MarkerPosition) + Text.Value.Substring(MarkerPosition + 1);
 				}
 			}else
 			{
-				base.Text = Text.Substring(0, MarkerPosition) + c + Text.Substring(MarkerPosition);
+				Text.Value = Text.Value.Substring(0, MarkerPosition) + c + Text.Value.Substring(MarkerPosition);
 				MarkerPosition++;
 			}
-			if(OnTextChange != null) OnTextChange(this, Text);
-			Dirty = true;
 		}
 		
 		protected internal override void Tick(double dt)

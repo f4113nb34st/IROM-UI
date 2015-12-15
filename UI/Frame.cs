@@ -3,6 +3,7 @@
 	using System;
 	using System.Collections.Generic;
 	using IROM.Util;
+	using IROM.Dynamix;
 	
 	/// <summary>
 	/// A Frame is the root <see cref="Component"/> of a UI system.
@@ -22,7 +23,7 @@
 		/// <summary>
 		/// A simple set of <see cref="Component"/>s to render, sorted by z value. (lower values first so they are rendered below)
 		/// </summary>
-		private readonly SortedSet<Component> RenderSet = new SortedSet<Component>(Comparer<Component>.Create((x, y) => ((x.ZCoord.Value > y.ZCoord.Value) ? 1 : -1)));
+		private readonly SortedSet<Component> RenderSet = new SortedSet<Component>(Comparer<Component>.Create((x, y) => (((double)x.ZCoord > (double)y.ZCoord) ? 1 : -1)));
 		
 		/// <summary>
 		/// The parent window.
@@ -35,11 +36,6 @@
 			}
 			protected set
 			{
-				if(value == null)
-				{
-					// disable once NotResolvedInText
-					throw new ArgumentNullException("Window cannot be null!");
-				}
 				if(BaseWindow != null)
 				{
 					BaseWindow.OnResize -= OnResize;
@@ -53,15 +49,18 @@
 					BaseWindow.OnCharTyped -= InputHandler.CharTypedEvent;
 				}
 				BaseWindow = value;
-				BaseWindow.OnResize += OnResize;
-				//add input listeners
-				BaseWindow.OnMousePress += InputHandler.MousePressEvent;
-				BaseWindow.OnMouseRelease += InputHandler.MouseReleaseEvent;
-				BaseWindow.OnMouseMove += InputHandler.MouseMoveEvent;
-				BaseWindow.OnMouseWheel += InputHandler.MouseWheelEvent;
-				BaseWindow.OnKeyPress += InputHandler.KeyPressEvent;
-				BaseWindow.OnKeyRelease += InputHandler.KeyReleaseEvent;
-				BaseWindow.OnCharTyped += InputHandler.CharTypedEvent;
+				if(BaseWindow != null)
+				{
+					BaseWindow.OnResize += OnResize;
+					//add input listeners
+					BaseWindow.OnMousePress += InputHandler.MousePressEvent;
+					BaseWindow.OnMouseRelease += InputHandler.MouseReleaseEvent;
+					BaseWindow.OnMouseMove += InputHandler.MouseMoveEvent;
+					BaseWindow.OnMouseWheel += InputHandler.MouseWheelEvent;
+					BaseWindow.OnKeyPress += InputHandler.KeyPressEvent;
+					BaseWindow.OnKeyRelease += InputHandler.KeyReleaseEvent;
+					BaseWindow.OnCharTyped += InputHandler.CharTypedEvent;
+				}
 			}
 		}
 		
@@ -79,7 +78,7 @@
 				BaseScreen.frame = this;
 				if(BaseScreen != null)
 				{
-					BaseScreen.Size.Pixels = new Vec2D(CurrentWindow.Width, CurrentWindow.Height);
+					BaseScreen.Size.Value = VectorUtil.Max(CurrentWindow.Size, 1);
 				}
 				if(OnScreenChange != null) OnScreenChange(this, BaseScreen);
 			}
@@ -107,10 +106,7 @@
 		public void Dispose()
 		{
 			//remove listeners
-			if(BaseWindow != null)
-			{
-				BaseWindow.OnResize -= OnResize;
-			}
+			CurrentWindow = null;
 		}
 		
 		internal void MarkDirty()
@@ -127,7 +123,7 @@
 		{
 			if(CurrentScreen != null)
 			{
-				CurrentScreen.Size.Pixels = args.Size;
+				BaseScreen.Size.Value = VectorUtil.Max(CurrentWindow.Size, 1);
 			}
 		}
 		

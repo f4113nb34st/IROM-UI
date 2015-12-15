@@ -2,6 +2,7 @@
 {
 	using System;
 	using IROM.Util;
+	using IROM.Dynamix;
 	
 	/// <summary>
 	/// A Panel is a simple <see cref="Component"/> with a color.
@@ -9,32 +10,10 @@
 	/// </summary>
 	public class Panel : Component
 	{
-		//the backing variable classes
-		private UIColor color;
-		
 		/// <summary>
-		/// Gets or sets the color of this <see cref="Panel"/>.
+		/// The color of this <see cref="Panel"/>.
 		/// </summary>
-		public UIColor Color
-		{
-			get
-			{
-				return color;
-			}
-			set
-			{
-				if(color != value)
-				{
-					color = value;
-					if(OnColorChange != null) OnColorChange(this, color);
-				}
-			}
-		}
-		
-		/// <summary>
-		/// Invoked whenever <see cref="Color"/> changes.
-		/// </summary>
-		public event EventHandler<UIColor> OnColorChange;
+		public readonly Dynx<ARGB> Color = new Dynx<ARGB>();
 		
 		public Panel(Component parent) : this(parent, false)
 		{
@@ -43,8 +22,8 @@
 		
 		public Panel(Component parent, bool bypass) : base(parent, bypass)
 		{
-			Color = new UIColor(this);
-			Color.OnChange += MarkMasterDirty;
+			Color.Value = ARGB.Clear;
+			Color.Subscribe(MarkDirty);
 		}
 		
 		protected override void Render(Image image)

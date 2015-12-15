@@ -2,6 +2,7 @@
 {
 	using System;
 	using IROM.Util;
+	using IROM.Dynamix;
 	
 	/// <summary>
 	/// A part of a GUI. Example components include buttons, panels, and labels.
@@ -18,14 +19,30 @@
 		/// </summary>
 		public readonly LocklessLinkedList<Component> Children = new LocklessLinkedList<Component>();
 		
-		//the backing variable classes
-		private UIPosition position;
-		private UIZCoord zCoord;
-		private UISize size;
-		private UIClip clip;
+		/// <summary>
+		/// The position of this <see cref="Component"/>. By default equal to the parent's position.
+		/// </summary>
+		public readonly Dynx<Vec2D> Position = new Dynx<Vec2D>();
+		
+		/// <summary>
+		/// The z coordinate of this <see cref="Component"/>. Indicates rendering order (bigger on top). By default 1 greater than its parent.
+		/// </summary>
+		public readonly Dynx<double> ZCoord = new Dynx<double>();
+		
+		/// <summary>
+		/// Gets or sets the size of this <see cref="Component"/>. By default equal to the parent's size.
+		/// </summary>
+		public readonly Dynx<Vec2D> Size = new Dynx<Vec2D>();
+		
+		/// <summary>
+		/// Gets or sets the clipping bounds of this <see cref="Component"/>.
+		/// </summary>
+		public readonly Dynx<Rectangle> Clip = new Dynx<Rectangle>();
+		
+		//backing vars
 		private bool isFocused;
-		private bool visible = true;
-		private bool hidden = false;
+		private volatile bool visible = true;
+		private volatile bool hidden = false;
 		private volatile bool dirty = true;
 		
 		/// <summary>
@@ -60,7 +77,7 @@
 			set
 			{
 				visible = value;
-				MarkMasterDirty(this, EventArgs.Empty);
+				MarkFrameDirty();
 			}
 		}
 		
@@ -74,7 +91,7 @@
 			set
 			{
 				hidden = value;
-				MarkMasterDirty(this, EventArgs.Empty);
+				MarkFrameDirty();
 			}
 		}
 		
@@ -87,7 +104,7 @@
 			set
 			{
 				dirty = value;
-				if(dirty) MarkMasterDirty(this, EventArgs.Empty);
+				if(dirty) MarkFrameDirty();
 			}
 		}
 		
@@ -123,82 +140,6 @@
 		protected internal Image Rendering = new Image(1, 1);
 		
 		/// <summary>
-		/// Gets or sets the position of this <see cref="Component"/>. By default equal to the parent's position.
-		/// </summary>
-		public UIPosition Position
-		{
-			get
-			{
-				return position;
-			}
-			set
-			{
-				if(position != value)
-				{
-					position = value;
-					if(OnPositionChange != null) OnPositionChange(this, position);
-				}
-			}
-		}
-		
-		/// <summary>
-		/// Gets or sets the z coordinate of this <see cref="Component"/>. Indicates rendering order (bigger on top). By default 1 greater than its parent.
-		/// </summary>
-		public UIZCoord ZCoord
-		{
-			get
-			{
-				return zCoord;
-			}
-			set
-			{
-				if(zCoord != value)
-				{
-					zCoord = value;
-					if(OnZCoordChange != null) OnZCoordChange(this, zCoord);
-				}
-			}
-		}
-		
-		/// <summary>
-		/// Gets or sets the size of this <see cref="Component"/>. By default equal to the parent's size.
-		/// </summary>
-		public UISize Size
-		{
-			get
-			{
-				return size;
-			}
-			set
-			{
-				if(size != value)
-				{
-					size = value;
-					if(OnSizeChange != null) OnSizeChange(this, size);
-				}
-			}
-		}
-		
-		/// <summary>
-		/// Gets or sets the clipping bounds of this <see cref="Component"/>.
-		/// </summary>
-		public UIClip Clip
-		{
-			get
-			{
-				return clip;
-			}
-			set
-			{
-				if(clip != value)
-				{
-					clip = value;
-					if(OnClipChange != null) OnClipChange(this, clip);
-				}
-			}
-		}
-		
-		/// <summary>
 		/// True if this <see cref="Component"/> is focused.
 		/// </summary>
 		public bool IsFocused
@@ -216,26 +157,6 @@
 				}
 			}
 		}
-		
-		/// <summary>
-		/// Invoked whenever <see cref="Position"/> changes.
-		/// </summary>
-		public event EventHandler<UIPosition> OnPositionChange;
-		
-		/// <summary>
-		/// Invoked whenever <see cref="ZCoord"/> changes.
-		/// </summary>
-		public event EventHandler<UIZCoord> OnZCoordChange;
-		
-		/// <summary>
-		/// Invoked whenever <see cref="Size"/> changes.
-		/// </summary>
-		public event EventHandler<UISize> OnSizeChange;
-		
-		/// <summary>
-		/// Invoked whenever <see cref="Clip"/> changes.
-		/// </summary>
-		public event EventHandler<UIClip> OnClipChange;
 		
 		/// <summary>
 		/// Invoked whenever <see cref="IsFocused"/> changes.
@@ -365,17 +286,6 @@
 		
 		protected Component(Component parent, bool bypass)
 		{
-			Position = new UIPosition();
-			Position.OnChange += MarkMasterDirty;
-			ZCoord = new UIZCoord();
-			ZCoord.OnChange += MarkMasterDirty;
-			Size = new UISize();
-			Size.OnChange += MarkMasterDirty;
-			Clip = new UIClip();
-			Clip.OnChange += MarkMasterDirty;
-			
-			Position.OwnSize = Size;
-			
 			if(parent != null)
 			{
 				if(!bypass) 
@@ -386,15 +296,21 @@
 				parent.Children.Add(this);
 				
 				//update references
-				Position.ParentPos = parent.Position;
-				Position.RatioPos = new Vec2D(1, 1);
-				Position.ParentSize = parent.Size;
-				Position.Ratio = new Vec2D(0, 0);
-				Size.ParentSize = parent.Size;
-				Size.Ratio = new Vec2D(1, 1);
-				ZCoord.ParentZ = parent.ZCoord;
-				Clip.ParentClip = parent.Clip;
+				Position.Exp = () => parent.Position.Value;
+				Size.Exp = () => parent.Size.Value;
+				ZCoord.Exp = () => parent.ZCoord.Value + 1;
+				Clip.Exp = () => parent.Clip.Value;
+			}else
+			{
+				Position.Value = 0;
+				ZCoord.Value = 0;
+				Size.Value = 0;
+				Clip.Value = new Rectangle(int.MinValue, int.MaxValue);
 			}
+			Position.Subscribe(MarkFrameDirty);
+			ZCoord.Subscribe(MarkFrameDirty);
+			Size.Subscribe(MarkDirty);
+			Clip.Subscribe(MarkFrameDirty);
 		}
 		
 		~Component()
@@ -402,7 +318,12 @@
 			OnDestroy(this, EventArgs.Empty);
 		}
 		
-		protected void MarkMasterDirty(object sender, EventArgs e)
+		protected internal void MarkDirty()
+		{
+			Dirty = true;
+		}
+		
+		protected internal void MarkFrameDirty()
 		{
 			Frame frame = MasterFrame;
 			if(frame != null) frame.MarkDirty();
@@ -485,7 +406,7 @@
 					Dirty = false;
 					Render(Rendering);
 				}
-				image.SetClip(Clip.Value);
+				image.SetClip(Clip);
 				if(!Opaque)
 				{
 					image.BlendBlit(Rendering, (Point2D)Position.Value);
@@ -496,7 +417,7 @@
 				image.ClearClip();
 			}else
 			{
-				image.SetClip(Clip.Value);
+				image.SetClip(Clip);
 				Render(image);
 				image.ClearClip();
 			}

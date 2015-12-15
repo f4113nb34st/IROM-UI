@@ -2,6 +2,7 @@
 {
 	using System;
 	using IROM.Util;
+	using IROM.Dynamix;
 	
 	/// <summary>
 	/// A divider is a thin panel that provides a colored border between <see cref="Component"/>s.
@@ -13,62 +14,20 @@
 		/// </summary>
 		public bool IsVertical;
 			
-		//the backing variable classes
-		private UIColor minColor;
-		private UIColor maxColor;
+		/// <summary>
+		/// The left/top color of this <see cref="Divider"/>.
+		/// </summary>
+		public readonly Dynx<ARGB> MinColor = new Dynx<ARGB>();
+		
+		/// <summary>
+		/// The right/bottom color of this <see cref="Divider"/>.
+		/// </summary>
+		public readonly Dynx<ARGB> MaxColor = new Dynx<ARGB>();
 		
 		/// <summary>
 		/// The <see cref="Interpolation"/> method used for the edges.
 		/// </summary>
 		public Interpolation.InterpFunction EdgeInterpolation = Interpolation.Linear;
-		
-		/// <summary>
-		/// Gets or sets the left/top color of this <see cref="Component"/>.
-		/// </summary>
-		public UIColor MinColor
-		{
-			get
-			{
-				return minColor;
-			}
-			set
-			{
-				if(minColor != value)
-				{
-					minColor = value;
-					if(OnMinColorChange != null) OnMinColorChange(this, minColor);
-				}
-			}
-		}
-		
-		/// <summary>
-		/// Gets or sets the right/bottom color of this <see cref="Component"/>.
-		/// </summary>
-		public UIColor MaxColor
-		{
-			get
-			{
-				return maxColor;
-			}
-			set
-			{
-				if(maxColor != value)
-				{
-					maxColor = value;
-					if(OnMaxColorChange != null) OnMaxColorChange(this, maxColor);
-				}
-			}
-		}
-		
-		/// <summary>
-		/// Invoked whenever <see cref="MinColor"/> changes.
-		/// </summary>
-		public event EventHandler<UIColor> OnMinColorChange;
-		
-		/// <summary>
-		/// Invoked whenever <see cref="MaxColor"/> changes.
-		/// </summary>
-		public event EventHandler<UIColor> OnMaxColorChange;
 		
 		public Divider(Component parent) : this(parent, false)
 		{
@@ -77,10 +36,10 @@
 		
 		public Divider(Component parent, bool bypass) : base(parent, bypass)
 		{
-			MinColor = new UIColor(this);
-			MinColor.OnChange += MarkMasterDirty;
-			MaxColor = new UIColor(this);
-			MaxColor.OnChange += MarkMasterDirty;
+			MinColor.Value = RGB.White;
+			MaxColor.Value = RGB.White;
+			MinColor.Subscribe(MarkDirty);
+			MaxColor.Subscribe(MarkDirty);
 		}
 		
 		protected override void Render(Image image)
