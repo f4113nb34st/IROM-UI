@@ -407,13 +407,7 @@
 					Render(Rendering);
 				}
 				image.SetClip(Clip.Value);
-				if(!Opaque)
-				{
-					image.BlendBlit(Rendering, (Point2D)Position.Value);
-				}else
-				{
-					image.MaskBlit(Rendering, (Point2D)Position.Value);
-				}
+				image.Blit(Rendering, (Point2D)Position.Value, Opaque ? RenderMode.MASK : RenderMode.BLEND);
 				image.ClearClip();
 			}else
 			{
