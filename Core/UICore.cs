@@ -9,17 +9,17 @@
     /// </summary>
 	public abstract class UICore : Core
 	{
-		protected UICore(String title) : base(title)
+		protected UICore(String title) : base(title, typeof(DoubleBufferStrategy))
         {
 			UIFrame = new Frame(WindowObj);
-			UIFrame.OnDirtyChange += (sender, e) => MarkDirty();
+			UIFrame.OnDirtyChange += MarkDirty;
 			AutoDirty = false;
 		}
 		
-		protected UICore(String title, double tickRate) : base(title, tickRate)
+		protected UICore(String title, double tickRate) : base(title, tickRate, typeof(DoubleBufferStrategy))
         {
 			UIFrame = new Frame(WindowObj);
-			UIFrame.OnDirtyChange += (sender, e) => MarkDirty();
+			UIFrame.OnDirtyChange += MarkDirty;
 			AutoDirty = false;
 		}
 		

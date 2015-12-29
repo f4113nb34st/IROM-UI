@@ -9,17 +9,17 @@
     /// </summary>
 	public abstract class UIMultiCore : MultiCore
 	{
-		protected UIMultiCore(String title) : base(title)
+		protected UIMultiCore(String title) : base(title, typeof(DoubleBufferStrategy))
         {
 			UIFrame = new Frame(WindowObj);
-			UIFrame.OnDirtyChange += (sender, e) => MarkDirty();
+			UIFrame.OnDirtyChange += MarkDirty;
 			AutoDirty = false;
 		}
 		
-		protected UIMultiCore(String title, double tickRate) : base(title, tickRate)
+		protected UIMultiCore(String title, double tickRate) : base(title, tickRate, typeof(DoubleBufferStrategy))
         {
 			UIFrame = new Frame(WindowObj);
-			UIFrame.OnDirtyChange += (sender, e) => MarkDirty();
+			UIFrame.OnDirtyChange += MarkDirty;
 			AutoDirty = false;
 		}
 		
