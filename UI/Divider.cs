@@ -27,19 +27,18 @@
 		/// <summary>
 		/// The <see cref="Interpolation"/> method used for the edges.
 		/// </summary>
-		public Interpolation.InterpFunction EdgeInterpolation = Interpolation.Linear;
+		public readonly Dynx<InterpFunction> EdgeInterpolation = new Dynx<InterpFunction>();
 		
-		public Divider(Component parent) : this(parent, false)
-		{
-			
-		}
-		
-		public Divider(Component parent, bool bypass) : base(parent, bypass)
+		public Divider()
 		{
 			MinColor.Value = RGB.White;
+			MinColor.OnUpdate += MarkDirty;
+			
 			MaxColor.Value = RGB.White;
-			MinColor.Subscribe(MarkDirty);
-			MaxColor.Subscribe(MarkDirty);
+			MaxColor.OnUpdate += MarkDirty;
+			
+			EdgeInterpolation.Value = Interpolation.Linear;
+			EdgeInterpolation.OnUpdate += MarkDirty;
 		}
 		
 		protected override void Render(Image image)
@@ -64,7 +63,7 @@
 						color = MaxColor.Value;
 					}
 					//interpolate
-					color = ColorUtil.Interpolate(color, Color.Value, mu, EdgeInterpolation);
+					color = ColorUtil.Interpolate(color, Color.Value, mu, EdgeInterpolation.Value);
 					//fill vert scan
 					for(int y = 0; y < image.Height; y++)
 					{
@@ -91,7 +90,7 @@
 						color = MaxColor.Value;
 					}
 					//interpolate
-					color = ColorUtil.Interpolate(color, Color.Value, mu, EdgeInterpolation);
+					color = ColorUtil.Interpolate(color, Color.Value, mu, EdgeInterpolation.Value);
 					//fill hori scan
 					for(int x = 0; x < image.Width; x++)
 					{

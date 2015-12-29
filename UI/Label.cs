@@ -65,24 +65,25 @@
 		/// </summary>
 		public int lengthOverride = -1;
 		
-		public Label(Component parent) : this(parent, "")
+		public Label()
 		{
+			Text.OnUpdate += MarkDirty;
 			
+			TextColor.Value = RGB.Black;
+			TextColor.OnUpdate += MarkDirty;
+			
+			BackColor.Value = RGB.White;
+			BackColor.OnUpdate += MarkDirty;
 		}
 		
-		public Label(Component parent, string text) : this(parent, false, text)
-		{
-			
-		}
-		
-		public Label(Component parent, bool bypass, string text) : base(parent, bypass)
+		public Label(string text) : this()
 		{
 			Text.Value = text;
-			TextColor.Value = RGB.Black;
-			BackColor.Value = RGB.White;
-			Text.Subscribe(MarkDirty);
-			TextColor.Subscribe(MarkDirty);
-			BackColor.Subscribe(MarkDirty);
+		}
+		
+		public Label(Func<string> textExp) : this()
+		{
+			Text.Exp = textExp;
 		}
 		
 		protected override void Render(Image image)
@@ -94,7 +95,9 @@
 		{
 			image.Fill(BackColor.Value);
 			
-			int length = Text.Value.Length;
+			string text = Text.Value;
+			if(text == null) text = "null";
+			int length = text.Length;
 			if(length == 0)
 			{
 				return;
@@ -104,7 +107,7 @@
 				Point2D idealSize = new Point2D(image.Width / Math.Max(length, lengthOverride), image.Height);
 				if(CurrentFont == null || CurrentFont.Size != idealSize)
 				{
-					CurrentFont = new Font(idealSize, Style);
+					CurrentFont = Font.GetFont(idealSize, Style);
 				}
 			}
 			int x = 0;
@@ -121,7 +124,7 @@
 				case Justify.MIDDLE: y = (image.Height / 2) - (CurrentFont.Height / 2); break;
 				case Justify.MAX: y = image.Height - CurrentFont.Height; break;
 			}
-			CurrentFont.Draw(image, x, y, Text.Value, TextColor.Value);
+			CurrentFont.Draw(image, x, y, text, TextColor.Value);
 			if(useMarker)
 			{
 				CurrentFont.Draw(image, x + (int)((markerLoc - .5) * CurrentFont.Width), y, '|', TextColor.Value);

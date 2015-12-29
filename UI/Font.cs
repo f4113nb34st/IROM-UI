@@ -5,6 +5,7 @@
 	using System.Runtime.CompilerServices;
 	using System.Drawing.Imaging;
 	using System.Windows.Forms;
+	using System.Runtime.InteropServices;
 	using IROM.Util;
 	
 	/// <summary>
@@ -20,6 +21,42 @@
 			ITALIC = 2,
 			//UNDERLINE = 4, underline not supported
 			STRIKE_OUT = 8,
+		}
+		
+		private struct FontAttributes
+		{
+			public Point2D size;
+			public FontType type;
+		}
+		
+		private static readonly Dictionary<FontAttributes, GCHandle> fontIndex = new Dictionary<FontAttributes, GCHandle>();
+		
+		/// <summary>
+		/// Returns a new Font with the given characteristics.
+		/// </summary>
+		/// <param name="size">The max size of the <see cref="Font"/> in pixels.</param>
+		/// <param name="type">The <see cref="FontType"/>.</param>
+		/// <returns>A font with the given characteristics.</returns>
+		public static Font GetFont(Point2D size, FontType type = FontType.PLAIN)
+		{
+			//validate size
+			size = VectorUtil.Max(size, new Point2D(1, 1));
+			
+			FontAttributes attr = new FontAttributes{size = size, type = type};
+			GCHandle handle;
+			Font font = null;
+			//if has and not gc'ed
+			if(fontIndex.TryGetValue(attr, out handle) && handle.IsAllocated)
+			{
+				font = handle.Target as Font;
+			}
+			if(font == null)
+			{
+				font = new Font(attr);
+				handle = GCHandle.Alloc(font, GCHandleType.Weak);
+				fontIndex[attr] = handle;
+			}
+			return font;
 		}
 		
 		/// <summary>
@@ -67,26 +104,15 @@
 		private readonly Dictionary<char, FontRender> Renders = new Dictionary<char, FontRender>();
 		
 		/// <summary>
-		/// Creates a new <see cref="Font"/> with the given pixel size.
+		/// Creates a new <see cref="Font"/> with the given attributes
 		/// </summary>
-		/// <param name="size">The max size of the <see cref="Font"/> in pixels.</param>
-		public Font(Point2D size) : this(size, FontType.PLAIN)
+		/// <param name="attr">The font attributes.</param>
+		private Font(FontAttributes attr)
 		{
-			
-		}
-		
-		/// <summary>
-		/// Creates a new <see cref="Font"/> with the given pixel size and <see cref="FontType"/>.
-		/// </summary>
-		/// <param name="size">The max size of the <see cref="Font"/> in pixels.</param>
-		/// <param name="type">The <see cref="FontType"/>.</param>
-		public Font(Point2D size, FontType type)
-		{
-			System.Drawing.FontStyle style = (System.Drawing.FontStyle)type;
+			System.Drawing.FontStyle style = (System.Drawing.FontStyle)attr.type;
 			System.Drawing.FontFamily family = System.Drawing.FontFamily.GenericMonospace;
 			
-			size = VectorUtil.Max(size, new Point2D(1, 1));
-			Size = size;
+			Size = attr.size;
 			//guess size by height
 			InternalFont = new System.Drawing.Font(family, Height, style, System.Drawing.GraphicsUnit.Pixel);
 			
@@ -132,7 +158,7 @@
 		/// <param name="y">The y coord.</param>
 		/// <param name="s">The string.</param>
 		/// <param name="color">The color.</param>
-		public void Draw(IROM.Util.Image image, int x, int y, String s, ARGB color)
+		public void Draw(Image image, int x, int y, String s, ARGB color)
 		{
 			for(int i = 0; i < s.Length; i++)
 			{
@@ -147,7 +173,7 @@
 		/// <param name="x">The x coord.</param>
 		/// <param name="y">The y coord.</param>
 		/// <param name="c">The char.</param>
-		public void Draw(IROM.Util.Image image, int x, int y, char c)
+		public void Draw(Image image, int x, int y, char c)
 		{
 			Draw(image, x, y, c, RGB.Black);
 		}
@@ -184,7 +210,7 @@
 			}
 		}
 		
-		private unsafe void RenderChar(DataMap2D<float> render, char c)
+		private unsafe void RenderChar(FontRender render, char c)
 		{
 			using(System.Drawing.Bitmap bitmap = new System.Drawing.Bitmap(Width, Height, PixelFormat.Format32bppRgb))
 			{
@@ -192,15 +218,15 @@
 				{
 					g.Clear(System.Drawing.Color.Black);
 					g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAlias;
-					TextRenderer.DrawText(g, c.ToString(), InternalFont, new Rectangle(0, 0, bitmap.Width, bitmap.Height), System.Drawing.Color.White, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+					TextRenderer.DrawText(g, c.ToString(), InternalFont, new Rectangle{Size = bitmap.Size}, System.Drawing.Color.White, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
 				}
 				
-				BitmapData data = bitmap.LockBits(new Rectangle(0, 0, bitmap.Width, bitmap.Height), ImageLockMode.ReadOnly, PixelFormat.Format32bppRgb);
+				BitmapData data = bitmap.LockBits(new Rectangle{Size = bitmap.Size}, ImageLockMode.ReadOnly, PixelFormat.Format32bppRgb);
 				uint* scan0 = (uint*)data.Scan0;
 				
-				for(int i = 0; i < Width; i++)
+				for(int j = 0; j < Height; j++)
 				{
-					for(int j = 0; j < Height; j++)
+					for(int i = 0; i < Width; i++)
 					{
 						render[i, j] = ((*(scan0 + (i + (Width * j)))) & 0xFF) / (float)255;
 					}

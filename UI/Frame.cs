@@ -11,14 +11,29 @@
 	public class Frame : IDisposable
 	{
 		/// <summary>
-		/// The display window of this <see cref="Frame"/>.
+		/// Null value to prevent NullPointerExceptions.
 		/// </summary>
-		private Window BaseWindow;
+		public static readonly Frame NULL_FRAME = new Frame();
 		
 		/// <summary>
-		/// The screen of this <see cref="Frame"/>.
+		/// The display window of this <see cref="Frame"/>.
 		/// </summary>
-		private Screen BaseScreen;
+		private Window windowObj;
+		
+		/// <summary>
+		/// The root component of this <see cref="Frame"/>.
+		/// </summary>
+		private Component root;
+		
+		/// <summary>
+		/// The current size of this frame.
+		/// </summary>
+		public readonly Dynx<Point2D> Size = new Dynx<Point2D>();
+		
+		/// <summary>
+		/// The input handler for this Frame.
+		/// </summary>
+		internal readonly FrameInputHandler InputHandler;
 		
 		/// <summary>
 		/// A simple set of <see cref="Component"/>s to render, sorted by z value. (lower values first so they are rendered below)
@@ -28,71 +43,124 @@
 		/// <summary>
 		/// The parent window.
 		/// </summary>
-		public Window CurrentWindow
+		public Window WindowObj
 		{
 			get
 			{
-				return BaseWindow;
+				return windowObj;
 			}
 			protected set
 			{
-				if(BaseWindow != null)
+				if(windowObj != null)
 				{
-					BaseWindow.OnResize -= OnResize;
+					windowObj.OnResize -= OnResize;
 					//remove input listeners
-					BaseWindow.OnMousePress -= InputHandler.MousePressEvent;
-					BaseWindow.OnMouseRelease -= InputHandler.MouseReleaseEvent;
-					BaseWindow.OnMouseMove -= InputHandler.MouseMoveEvent;
-					BaseWindow.OnMouseWheel -= InputHandler.MouseWheelEvent;
-					BaseWindow.OnKeyPress -= InputHandler.KeyPressEvent;
-					BaseWindow.OnKeyRelease -= InputHandler.KeyReleaseEvent;
-					BaseWindow.OnCharTyped -= InputHandler.CharTypedEvent;
+					windowObj.OnMousePress -= InputHandler.MousePressEvent;
+					windowObj.OnMouseRelease -= InputHandler.MouseReleaseEvent;
+					windowObj.OnMouseMove -= InputHandler.MouseMoveEvent;
+					windowObj.OnMouseWheel -= InputHandler.MouseWheelEvent;
+					windowObj.OnKeyPress -= InputHandler.KeyPressEvent;
+					windowObj.OnKeyRelease -= InputHandler.KeyReleaseEvent;
+					windowObj.OnCharTyped -= InputHandler.CharTypedEvent;
 				}
-				BaseWindow = value;
-				if(BaseWindow != null)
+				windowObj = value;
+				if(windowObj != null)
 				{
-					BaseWindow.OnResize += OnResize;
+					FrameBuffer[] buffers = windowObj.BufferStrategy.GetBuffers();
+					var newFrameDirtyRegions = new Entry<Image, FastLinkedList<Rectangle>>[buffers.Length];
+					for(int i = 0; i < newFrameDirtyRegions.Length; i++)
+					{
+						newFrameDirtyRegions[i] = new Entry<Image, FastLinkedList<Rectangle>>(buffers[i].Image, new FastLinkedList<Rectangle>());
+					}
+					frameDirtyRegions = newFrameDirtyRegions;
+					
+					windowObj.OnResize += OnResize;
 					//add input listeners
-					BaseWindow.OnMousePress += InputHandler.MousePressEvent;
-					BaseWindow.OnMouseRelease += InputHandler.MouseReleaseEvent;
-					BaseWindow.OnMouseMove += InputHandler.MouseMoveEvent;
-					BaseWindow.OnMouseWheel += InputHandler.MouseWheelEvent;
-					BaseWindow.OnKeyPress += InputHandler.KeyPressEvent;
-					BaseWindow.OnKeyRelease += InputHandler.KeyReleaseEvent;
-					BaseWindow.OnCharTyped += InputHandler.CharTypedEvent;
+					windowObj.OnMousePress += InputHandler.MousePressEvent;
+					windowObj.OnMouseRelease += InputHandler.MouseReleaseEvent;
+					windowObj.OnMouseMove += InputHandler.MouseMoveEvent;
+					windowObj.OnMouseWheel += InputHandler.MouseWheelEvent;
+					windowObj.OnKeyPress += InputHandler.KeyPressEvent;
+					windowObj.OnKeyRelease += InputHandler.KeyReleaseEvent;
+					windowObj.OnCharTyped += InputHandler.CharTypedEvent;
 				}
 			}
 		}
 		
-		internal readonly FrameInputHandler InputHandler;
-		
-		public Screen CurrentScreen
+		/// <summary>
+		/// The current coords of the mouse.
+		/// </summary>
+		public Point2D MousePosition
 		{
 			get
 			{
-				return BaseScreen;
-			}
-			set
-			{
-				BaseScreen = value;
-				BaseScreen.frame = this;
-				if(BaseScreen != null)
+				if(WindowObj != null)
 				{
-					BaseScreen.Size.Value = VectorUtil.Max(CurrentWindow.Size, 1);
+					return WindowObj.InputStates.MousePosition;
+				}else
+				{
+					return default(Point2D);
 				}
-				if(OnScreenChange != null) OnScreenChange(this, BaseScreen);
 			}
 		}
 		
 		/// <summary>
-		/// Called when the <see cref="CurrentScreen"/> changes.
+		/// The lowest component attached to this Frame.
 		/// </summary>
-		public event EventHandler<Screen> OnScreenChange;
+		public Component Root
+		{
+			get
+			{
+				return root;
+			}
+			set
+			{
+				if(root != null)
+				{
+					root.Size.Value = 1;
+				}
+				root = value;
+				if(root != null)
+				{
+					root.FrameObj.Value = this;
+					root.Size.Exp = () => Size.Value;
+				}
+				if(OnScreenChange != null) OnScreenChange(root);
+			}
+		}
 		
 		/// <summary>
-		/// Called when the <see cref="CurrentScreen"/> becomes dirty.
+		/// Called when the <see cref="Root"/> changes.
 		/// </summary>
-		public event EventHandler OnDirtyChange;
+		public event Action<Component> OnScreenChange;
+		
+		/// <summary>
+		/// Called when the <see cref="Root"/> becomes dirty.
+		/// </summary>
+		public event Action OnDirtyChange;
+		
+		/// <summary>
+		/// The queue of rectangles that need to be redrawn.
+		/// </summary>
+		private FastLinkedList<Rectangle> dirtyRegions = new FastLinkedList<Rectangle>();
+		
+		/// <summary>
+		/// The array of dirty lists for each buffer.
+		/// </summary>
+		private Entry<Image, FastLinkedList<Rectangle>>[] frameDirtyRegions = new Entry<Image, FastLinkedList<Rectangle>>[0];
+		
+		/// <summary>
+		/// The intermediate buffer between the frame and the screen.
+		/// </summary>
+		private Image renderBuffer = new Image(1, 1);
+		
+		/// <summary>
+		/// Creates a new Frame with no parent window.
+		/// </summary>
+		public Frame() : this(null)
+		{
+			
+		}
 		
 		/// <summary>
 		/// Creates a new Frame for the given Window.
@@ -100,75 +168,155 @@
 		public Frame(Window window)
 		{
 			InputHandler = new FrameInputHandler(this);
-			CurrentWindow = window;
+			WindowObj = window;
+			Size.OnFilter += size => VectorUtil.Max(size, 1);
 		}
 
 		public void Dispose()
 		{
 			//remove listeners
-			CurrentWindow = null;
+			WindowObj = null;
 		}
 		
-		internal void MarkDirty()
+		public void MarkDirty(Rectangle region)
 		{
-			if(OnDirtyChange != null) OnDirtyChange(this, EventArgs.Empty);
+			bool expanded = false;
+			Rectangle value;
+			foreach(DoubleNode<Rectangle> node in dirtyRegions.GetNodes())
+			{
+				value = node.Value;
+				//if already dirty, don't do more
+				if(value.Contains(region))
+					return;
+				//if larger than prev, expand it
+				if(region.Contains(value))
+				{
+					expanded = true;
+					node.Value = region;
+					break;
+				}
+				//if can be combined, expand it
+				if((region.Min.X == value.Min.X && region.Max.X == value.Max.X) && (region.Min.Y <= value.Max.Y && region.Max.Y >= value.Min.Y))
+				{
+					expanded = true;
+					node.Value.Min.Y = Math.Min(region.Min.Y, value.Min.Y);
+					node.Value.Max.Y = Math.Max(region.Max.Y, value.Max.Y);
+					break;
+				}else
+				if((region.Min.Y == value.Min.Y && region.Max.Y == value.Max.Y) && (region.Min.X <= value.Max.X && region.Max.X >= value.Min.X))
+				{
+					expanded = true;
+					node.Value.Min.X = Math.Min(region.Min.X, value.Min.X);
+					node.Value.Max.X = Math.Max(region.Max.X, value.Max.X);
+					break;
+				}
+			}
+			if(!expanded)
+			{
+				dirtyRegions.Add(region);
+			}
+			
+			if(OnDirtyChange != null) OnDirtyChange();
 		}
 		
 		/// <summary>
 		/// Resizes this <see cref="Frame"/> to ensure it always matches its <see cref="Window"/>
 		/// </summary>
-		/// <param name="sender">The event sender.</param>
-		/// <param name="args">The resize arguments.</param>
-		protected void OnResize(object sender, ResizeEventArgs args)
+		/// <param name="size">The new size.</param>
+		private void OnResize(Point2D size)
 		{
-			if(CurrentScreen != null)
-			{
-				BaseScreen.Size.Value = VectorUtil.Max(CurrentWindow.Size, 1);
-			}
+			Size.Value = size;
 		}
 		
 		internal void Tick(double dt)
 		{
-			if(CurrentScreen != null)
+			if(Root != null)
 			{
-				CurrentScreen.Tick(dt);
+				Root.Tick(dt);
 			}
 		}
 		
 		public void Render(Image image)
 		{
-			if(CurrentScreen != null)
+			var regions = dirtyRegions;
+			dirtyRegions = new FastLinkedList<Rectangle>();
+			if(renderBuffer.Size != image.Size)
 			{
-				//prepare render list
-				RenderSet.Clear();
-				RecursiveRenderAdd(CurrentScreen, RenderSet);
-				//perform renders
-				foreach(Component comp in RenderSet)
+				renderBuffer.Resize(image.Size);
+				//clear all dirty regions
+				regions.Clear();
+				foreach(var entry in frameDirtyRegions)
 				{
-					comp.BaseRender(image);
+					entry.Value.Clear();
 				}
-			}else
-			{
-				image.Fill(RGB.Black);
+				//add entire screen
+				regions.Add(new Rectangle{Size = renderBuffer.Size});
 			}
+			foreach(Rectangle region in regions)
+			{
+				renderBuffer.PushClip(region);
+				if(Root != null)
+				{
+					//prepare render list
+					RenderSet.Clear();
+					RecursiveRenderAdd(Root, RenderSet, region);
+					//perform renders
+					foreach(Component comp in RenderSet)
+					{
+						comp.BaseRender(renderBuffer);
+					}
+				}else
+				{
+					renderBuffer.Fill(RGB.Black);
+				}
+				renderBuffer.PopClip();
+				
+				foreach(var entry in frameDirtyRegions)
+				{
+					entry.Value.Add(region);
+				}
+			}
+			regions.Clear();
+			regions = null;
+			foreach(var entry in frameDirtyRegions)
+			{
+				if(entry.Key == image)
+				{
+					regions = entry.Value;
+					break;
+				}
+			}
+			if(regions == null) throw new Exception("Frame.frameDirtyRegions has been corrupted! This shouldn't be possible!");
+			foreach(Rectangle region in regions)
+			{
+				image.PushClip(region);
+				image.Copy(renderBuffer);
+				image.PopClip();
+			}
+			regions.Clear();
 		}
 		
 		/// <summary>
 		/// Adds the given <see cref="Component"/> to the given collection if renderable, as well as all of it's descendants.
+		/// Also checks for whether the <see cref="Component"/> is in the region.
 		/// </summary>
 		/// <param name="comp">The <see cref="Component"/>.</param>
 		/// <param name="collection">The collection to add to.</param>
-		private void RecursiveRenderAdd(Component comp, ICollection<Component> collection)
+		/// <param name="region">The region to check.</param>
+		private void RecursiveRenderAdd(Component comp, ICollection<Component> collection, Rectangle region)
 		{
-			if(comp.Visible)
+			if(comp.Visible.Value)
 			{
-				if(!comp.Hidden)
+				if(VectorUtil.Overlap(region, comp.Bounds).IsValid())
 				{
-					collection.Add(comp);
-				}
-				foreach(Component child in comp.Children)
-				{
-					RecursiveRenderAdd(child, collection);
+					if(!comp.Hidden.Value)
+					{
+						collection.Add(comp);
+					}
+					foreach(Component child in comp.Children)
+					{
+						RecursiveRenderAdd(child, collection, region);
+					}
 				}
 			}
 		}

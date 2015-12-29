@@ -12,12 +12,12 @@
 		/// <summary>
 		/// The panel for the contents of this button.
 		/// </summary>
-		public Panel Content;
+		public readonly Panel Content;
 		
 		/// <summary>
 		/// The <see cref="Interpolation"/> method used for the edges.
 		/// </summary>
-		public Interpolation.InterpFunction EdgeInterpolation = Interpolation.Linear;
+		public readonly Dynx<InterpFunction> EdgeInterpolation = new Dynx<InterpFunction>();
 		
 		/// <summary>
 		/// The border size of this <see cref="Component"/>.
@@ -58,43 +58,53 @@
 			protected set;
 		}
 		
-		public Button(Component parent) : this(parent, false)
-		{
-			
-		}
-		
-		public Button(Component parent, bool bypass) : base(parent, bypass)
+		public Button()
 		{
 			//init border to 5%
 			Border.Exp = () => Size.Value * .05;
+			Border.OnUpdate += MarkDirty;
 			
 			ForeColor.Value = RGB.White;
+			ForeColor.OnUpdate += MarkDirty;
+			
 			BackColor.Value = RGB.Black;
+			BackColor.OnUpdate += MarkDirty;
 			
 			//init hover color to average of fore and back
 			HoverColor.Exp = () => (ForeColor.Value / 2) + (BackColor.Value / 2);
+			HoverColor.OnUpdate += MarkDirty;
 			
-			Content = new Panel(this, true);
+			EdgeInterpolation.Value = Interpolation.Linear;
+			EdgeInterpolation.OnUpdate += MarkDirty;
+			
+			//create content panel
+			Content = new Panel();
+			Content.Parent.Value = this;
 			//init color
 			Content.Color.Exp = () => ForeColor.Value;
 			//center in button
-			Content.Position.Exp = () => (Size.Value - Content.Size.Value) / 2;
+			Content.Position.Exp = () =>
+			{
+				Vec2D vec = Position.Value;
+				vec += Size.Value / 2;
+				vec -= Content.Size.Value / 2;
+				return vec;
+			};
+			//reduce size by twice border
+			Content.Size.Exp = () =>
+			{
+				Vec2D vec = Size.Value;
+				vec -= Border.Value * 2;
+				return vec;
+			};
 			//slightly offset z coord
 			Content.ZCoord.Exp = () => ZCoord.Value + .001;
-			//reduce size by twice border
-			Content.Size.Exp = () => Size.Value - Border.Value * 2;
+			Content.Hidden.Value = true;
 			
-			Content.Hidden = true;
+			//re-render when content color changes
+			Content.Color.OnUpdate += MarkDirty;
 			
-			Border.Subscribe(MarkDirty);
-			ForeColor.Subscribe(MarkDirty);
-			BackColor.Subscribe(MarkDirty);
-			HoverColor.Subscribe(MarkDirty);
-			//re-render content on fore color change
-			ForeColor.Subscribe(Content.MarkDirty);
-			
-			//exit when color changes
-			OnMouseEnter += (sender, e) => 
+			OnMouseEnter += () => 
 			{
 				if(!DisableHoverColor) 
 				{
@@ -102,7 +112,7 @@
 					Content.Color.Exp = () => HoverColor.Value;
 				}
 			};
-			OnMouseExit += (sender, e) => 
+			OnMouseExit += () => 
 			{
 				if(!DisableHoverColor) 
 				{
@@ -121,43 +131,42 @@
 		{
 			int width = image.Width;
 			int height = image.Height;
-			int xBorder = (int)Border.Value.X;
-			int yBorder = (int)Border.Value.Y;
-			ARGB color = Hovered ? HoverColor.Value : ForeColor.Value;
+			Point2D border = (Point2D)Border.Value;
+			ARGB color = Content.Color.Value;
 			
-			if(xBorder > 0 && yBorder > 0)
+			if(border.X > 0 && border.Y > 0)
 			{
 				//for top left corner
-				FillCorner(image, false, false, 0, 0, xBorder, yBorder, xBorder, yBorder, color);
+				FillCorner(image, false, false, 0, 0, border.X, border.Y, border.X, border.Y, color);
 				
 				//for top right corner
-				FillCorner(image, true, false, width - xBorder, 0, width, yBorder, xBorder, yBorder, color);
+				FillCorner(image, true, false, width - border.X, 0, width, border.Y, border.X, border.Y, color);
 				
 				//for bottom left corner
-				FillCorner(image, false, true, 0, height - xBorder, xBorder, height, xBorder, yBorder, color);
+				FillCorner(image, false, true, 0, height - border.X, border.X, height, border.X, border.Y, color);
 				
 				//for bottom right corner
-				FillCorner(image, true, true, width - xBorder, height - xBorder, width, height, xBorder, yBorder, color);
+				FillCorner(image, true, true, width - border.X, height - border.X, width, height, border.X, border.Y, color);
 			}
-			if(xBorder > 0)
+			if(border.X > 0)
 			{
 				//for left side
-				FillXSide(image, false, 0, yBorder, xBorder, height - yBorder, xBorder, color);
+				FillXSide(image, false, 0, border.Y, border.X, height - border.Y, border.X, color);
 						
 				//for right side
-				FillXSide(image, true, width - xBorder, yBorder, width, height - yBorder, xBorder, color);
+				FillXSide(image, true, width - border.X, border.Y, width, height - border.Y, border.X, color);
 			}
-			if(yBorder > 0)
+			if(border.Y > 0)
 			{
 				//for top side
-				FillYSide(image, false, xBorder, 0, width - xBorder, yBorder, yBorder, color);
+				FillYSide(image, false, border.X, 0, width - border.X, border.Y, border.Y, color);
 				
 				//for bottom side
-				FillYSide(image, true, xBorder, height - yBorder, width - xBorder, height, yBorder, color);
+				FillYSide(image, true, border.X, height - border.Y, width - border.X, height, border.Y, color);
 			}
 			
 			//for center
-			image.FillRectangle(new Rectangle(xBorder, yBorder, width - (xBorder * 2), height - (yBorder * 2)), color);
+			image.FillRectangle(new Rectangle{Position = border, Size = image.Size - (border * 2)}, color);
 		}
 		
 		private void FillXSide(Image image, bool top, int minX, int minY, int maxX, int maxY, int xBorder, ARGB color)
@@ -170,7 +179,7 @@
 					mu = 1 - mu;
 				}
 				mu = Util.Clip(mu, 0, 1);
-				image.FillYScan(i, minY, maxY, ColorUtil.Interpolate(color, BackColor.Value, mu, EdgeInterpolation));
+				image.FillYScan(i, minY, maxY, ColorUtil.Interpolate(color, BackColor.Value, mu, EdgeInterpolation.Value));
 			}
 		}
 		
@@ -184,7 +193,7 @@
 					mu = 1 - mu;
 				}
 				mu = Util.Clip(mu, 0, 1);
-				image.FillXScan(minX, maxX, j, ColorUtil.Interpolate(color, BackColor.Value, mu, EdgeInterpolation));
+				image.FillXScan(minX, maxX, j, ColorUtil.Interpolate(color, BackColor.Value, mu, EdgeInterpolation.Value));
 			}
 		}
 		
@@ -209,7 +218,7 @@
 					bool unused = mu > 1;
 					mu = Util.Clip(mu, 0, 1);
 					
-					image[i, j] = ColorUtil.Interpolate(color, BackColor.Value, mu, EdgeInterpolation);
+					image[i, j] = ColorUtil.Interpolate(color, BackColor.Value, mu, EdgeInterpolation.Value);
 				}
 			}
 		}

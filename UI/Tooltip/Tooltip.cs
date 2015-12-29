@@ -7,7 +7,7 @@
 	/// <summary>
 	/// A tooltip is a panel that pops up when it's parent is hovered over.
 	/// </summary>
-	public class Tooltip : Panel
+	public class Tooltip : Panel, IDisposable
 	{
 		/// <summary>
 		/// The hover time before this <see cref="Tooltip"/> will appear.
@@ -17,28 +17,25 @@
 		/// <summary>
 		/// Time until the tooltip appears.
 		/// </summary>
-		private double TimeLeft = double.PositiveInfinity;
+		private readonly Dynx<double> TimeLeft = new Dynx<double>();
 		
 		/// <summary>
 		/// The last coords of the mouse.
 		/// </summary>
 		private readonly Dynx<Point2D> mouseCoords = new Dynx<Point2D>();
 		
-		public Tooltip(Component parent) : this(parent, false)
+		public Tooltip()
 		{
-			
-		}
-		
-		public Tooltip(Component parent, bool bypass) : base(parent, bypass)
-		{
-			Visible = false;
 			ZCoord.Value = 10000;//always display on top
-			InputOpaque = false;
+			InputOpaque.Value = false;
 			
-			Component screen = MasterScreen;
+			TimeLeft.Value = double.PositiveInfinity;
+			Visible.Exp = () => TimeLeft.Value <= 0;
 			
-			Dynx<bool> flipX = new Dynx<bool>(() => (parent.Position.Value.X + mouseCoords.Value.X + 16 + Size.Value.X) > screen.Size.Value.X);
-			Dynx<bool> flipY = new Dynx<bool>(() => (parent.Position.Value.Y + mouseCoords.Value.Y + 16 + Size.Value.Y) > screen.Size.Value.Y);
+			Dynx<bool> flipX = new Dynx<bool>();
+			Dynx<bool> flipY = new Dynx<bool>();
+			flipX.Exp = () => (Parent.Value.Position.Value.X + mouseCoords.Value.X + 16 + Size.Value.X) > this.FrameObj.Value.Size.Value.X;
+			flipY.Exp = () => (Parent.Value.Position.Value.Y + mouseCoords.Value.Y + 16 + Size.Value.Y) > this.FrameObj.Value.Size.Value.Y;
 			
 			Position.Exp = () =>
 			{
@@ -46,17 +43,49 @@
 				double y = mouseCoords.Value.Y + 16 + ((!flipY.Value ? 0 : -1) * (Size.Value.Y + 16));
 				return new Vec2D(x, y);
 			};
-			
-			parent.OnMouseEnter += (sender, e) => TimeLeft = HoverTime;
-			parent.OnMouseExit += (sender, e) => TimeLeft = double.PositiveInfinity;
-			parent.OnMouseMove += (sender, e) => mouseCoords.Value = e.Coords;
+		}
+		
+		public void Dispose()
+		{
+			Parent.Value = null;
+		}
+		
+		protected override void OnParentChange(Component oldParent, Component newParent)
+		{
+			base.OnParentChange(oldParent, newParent);
+			if(oldParent != NULL_PARENT)
+			{
+				oldParent.OnMouseEnter -= OnEnter;
+				oldParent.OnMouseExit -= OnExit;
+				oldParent.OnMouseMove -= OnMove;
+			}
+			if(newParent != NULL_PARENT)
+			{
+				newParent.OnMouseEnter += OnEnter;
+				newParent.OnMouseExit += OnExit;
+				newParent.OnMouseMove += OnMove;
+			}
+		}
+		
+		private void OnEnter()
+		{
+			TimeLeft.Value = HoverTime;
+		}
+		
+		private void OnExit()
+		{
+			TimeLeft.Value = double.PositiveInfinity;
+		}
+		
+		private void OnMove(Point2D coords, Point2D delta)
+		{
+			mouseCoords.Value = coords;
 		}
 		
 		protected internal override void Tick(double dt)
 		{
 			base.Tick(dt);
-			TimeLeft -= dt;
-			Visible = TimeLeft <= 0;
+			TimeLeft.Value -= dt;
 		}
 	}
 }

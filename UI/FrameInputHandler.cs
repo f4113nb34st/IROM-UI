@@ -28,11 +28,6 @@
 		private readonly HashSet<Component> ActiveComponents = new HashSet<Component>();
 		
 		/// <summary>
-		/// The current coords of the mouse.
-		/// </summary>
-		private Point2D MouseCoords;
-		
-		/// <summary>
 		/// A dictionary that contains all the <see cref="Component"/>s waiting on release events from the mouse buttons.
 		/// </summary>
 		private MultiValueDictionary<MouseButton, Component> MouseActiveComponents = new MultiValueDictionary<MouseButton, Component>();
@@ -68,12 +63,12 @@
 			{
 				if(BaseFocusedComponent != null)
 				{
-					BaseFocusedComponent.IsFocused = false;
+					BaseFocusedComponent.IsFocused.Value = false;
 				}
 				BaseFocusedComponent = value;
-				if(value != null)
+				if(BaseFocusedComponent != null)
 				{
-					value.IsFocused = true;
+					BaseFocusedComponent.IsFocused.Value = true;
 				}
 			}
 		}
@@ -88,17 +83,16 @@
 			Parent = parent;
 		}
 		
-		internal void MousePressEvent(object sender, MouseButtonEventArgs args)
+		internal void MousePressEvent(MouseButton button)
 		{
-			if(Parent.CurrentScreen != null)
+			if(Parent.Root != null)
 			{
-				//create new args
-				MouseButtonEventArgs args2 = new MouseButtonEventArgs(args);
+				Point2D mouseCoords = Parent.MousePosition;
 				Rectangle bounds = new Rectangle();
 				
 				//prepare event list
 				EventSet.Clear();
-				RecursiveEventAdd(Parent.CurrentScreen, EventSet, InputEventType.MPress);
+				RecursiveEventAdd(Parent.Root, EventSet, InputEventType.MPress);
 				
 				//perform event passing
 				foreach(Component comp in EventSet)
@@ -107,27 +101,20 @@
 					bounds.Min = (Point2D)comp.Position.Value;
 					bounds.Max = (Point2D)comp.Size.Value + bounds.Min;
 					//if within component bounds
-					if(bounds.Contains(args.Coords))
+					if(bounds.Contains(mouseCoords))
 					{
-						//make coords relative to component
-						args2.Coords = args.Coords - bounds.Min;
 						//call event
-						comp.InvokeMousePress(Parent, args2);
+						comp.InvokeMousePress(button);
 						//add to components waiting on release
-						MouseActiveComponents.Add(args.Button, comp);
-						//auto consume if opaque
-						if(comp.InputOpaque)
+						MouseActiveComponents.Add(button, comp);
+						//consume if opaque
+						if(comp.InputOpaque.Value)
 						{
 							//if eligible for keyboard focus, give it
 							if(comp.HasListeners(InputEventType.KPress) || comp.HasListeners(InputEventType.KRelease) || comp.HasListeners(InputEventType.CTyped))
 						    {
 						   		FocusedComponent = comp;
 						    }
-							args2.Consumed = true;
-						}
-						//break if consumed
-						if(args2.Consumed)
-						{
 							break;
 						}
 					}
@@ -135,21 +122,20 @@
 			}
 		}
 		
-		internal void MouseReleaseEvent(object sender, MouseButtonEventArgs args)
+		internal void MouseReleaseEvent(MouseButton button)
 		{
-			if(Parent.CurrentScreen != null)
+			if(Parent.Root != null)
 			{
-				//create new args
-				MouseButtonEventArgs args2 = new MouseButtonEventArgs(args);
+				Point2D mouseCoords = Parent.MousePosition;
 				Rectangle bounds = new Rectangle();
 				
 				//store all components that are guaranteed a call
 				ActiveComponents.Clear();
-				ActiveComponents.UnionWith(MouseActiveComponents[args.Button]);
+				ActiveComponents.UnionWith(MouseActiveComponents.GetValues(button));
 				
 				//prepare event list
 				EventSet.Clear();
-				RecursiveEventAdd(Parent.CurrentScreen, EventSet, InputEventType.MRelease);
+				RecursiveEventAdd(Parent.Root, EventSet, InputEventType.MRelease);
 				
 				//perform normal event passing
 				foreach(Component comp in EventSet)
@@ -158,21 +144,14 @@
 					bounds.Min = (Point2D)comp.Position.Value;
 					bounds.Max = (Point2D)comp.Size.Value + bounds.Min;
 					//if within component bounds
-					if(bounds.Contains(args.Coords))
+					if(bounds.Contains(mouseCoords))
 					{
-						//make coords relative to component
-						args2.Coords = args.Coords - bounds.Min;
 						//call event
-						comp.InvokeMouseRelease(Parent, args2);
+						comp.InvokeMouseRelease(button);
 						//remove from active components (we don't care if it doesn't contain the element, it'll just do nothing)
 						ActiveComponents.Remove(comp);
-						//auto consume if opaque
-						if(comp.InputOpaque)
-						{
-							args2.Consumed = true;
-						}
-						//break if consumed
-						if(args2.Consumed)
+						//consume if opaque
+						if(comp.InputOpaque.Value)
 						{
 							break;
 						}
@@ -188,38 +167,32 @@
 						//set bounds
 						bounds.Min = (Point2D)comp.Position.Value;
 						bounds.Max = (Point2D)comp.Size.Value + bounds.Min;
-						//make coords relative to component
-						args2.Coords = args.Coords - bounds.Min;
 						//call event
-						comp.InvokeMouseRelease(Parent, args2);
+						comp.InvokeMouseRelease(button);
 					}
 				}
 				
 				//remove all waiters
-				MouseActiveComponents.Clear(args.Button);
+				MouseActiveComponents.Clear(button);
 			}
 		}
 		
-		internal void MouseMoveEvent(object sender, MouseMoveEventArgs args)
+		internal void MouseMoveEvent(Point2D mouseCoords, Point2D delta)
 		{
-			if(Parent.CurrentScreen != null)
+			if(Parent.Root != null)
 			{
-				MouseCoords = args.Coords;
-				
-				//create new args
-				MouseMoveEventArgs args2 = new MouseMoveEventArgs(args);
 				Rectangle bounds = new Rectangle();
 				
 				//store all components that are guaranteed a call
 				ActiveComponents.Clear();
 				foreach(MouseButton button in Enum.GetValues(typeof(MouseButton)))
 				{
-					ActiveComponents.UnionWith(MouseActiveComponents[button]);
+					ActiveComponents.UnionWith(MouseActiveComponents.GetValues(button));
 				}
 				
 				//prepare event list
 				EventSet.Clear();
-				RecursiveEventAdd(Parent.CurrentScreen, EventSet, InputEventType.MMove);
+				RecursiveEventAdd(Parent.Root, EventSet, InputEventType.MMove);
 				
 				//add all entered components to exited
 				//if they don't get removed, then we schedule an exit
@@ -233,7 +206,7 @@
 					bounds.Min = (Point2D)comp.Position.Value;
 					bounds.Max = (Point2D)comp.Size.Value + bounds.Min;
 					//if within component bounds
-					if(bounds.Contains(args.Coords))
+					if(bounds.Contains(mouseCoords))
 					{
 						if(comp.HasListeners(InputEventType.MEnter) || comp.HasListeners(InputEventType.MExit))
 						{
@@ -243,7 +216,7 @@
 								//call enter
 								if(comp.HasListeners(InputEventType.MEnter))
 								{
-									comp.InvokeMouseEnter(Parent, EventArgs.Empty);
+									comp.InvokeMouseEnter();
 								}
 								EnteredComponents.Add(comp);
 							}else //else prevent automatic exit
@@ -252,19 +225,12 @@
 							}
 						}
 						
-						//make coords relative to component
-						args2.Coords = args.Coords - bounds.Min;
-						//call event
-						comp.InvokeMouseMove(Parent, args2);
+						//call event with local mouse coords
+						comp.InvokeMouseMove(mouseCoords - bounds.Min, delta);
 						//remove from active components (we don't care if it doesn't contain the element, it'll just do nothing)
 						ActiveComponents.Remove(comp);
-						//auto consume if opaque
-						if(comp.InputOpaque)
-						{
-							args2.Consumed = true;
-						}
-						//break if consumed
-						if(args2.Consumed)
+						//consume if opaque
+						if(comp.InputOpaque.Value)
 						{
 							break;
 						}
@@ -280,10 +246,8 @@
 						//set bounds
 						bounds.Min = (Point2D)comp.Position.Value;
 						bounds.Max = (Point2D)comp.Size.Value + bounds.Min;
-						//make coords relative to component
-						args2.Coords = args.Coords - bounds.Min;
-						//call event
-						comp.InvokeMouseMove(Parent, args2);
+						//call event with local mouse coords
+						comp.InvokeMouseMove(mouseCoords - bounds.Min, delta);
 					}
 				}
 				
@@ -293,24 +257,23 @@
 					//call exit
 					if(comp.HasListeners(InputEventType.MExit))
 					{
-						comp.InvokeMouseExit(Parent, EventArgs.Empty);
+						comp.InvokeMouseExit();
 					}
 					EnteredComponents.Remove(comp);
 				}
 			}
 		}
 		
-		internal void MouseWheelEvent(object sender, MouseWheelEventArgs args)
+		internal void MouseWheelEvent(int delta)
 		{
-			if(Parent.CurrentScreen != null)
+			if(Parent.Root != null)
 			{
-				//create new args
-				MouseWheelEventArgs args2 = new MouseWheelEventArgs(args);
+				Point2D mouseCoords = Parent.MousePosition;
 				Rectangle bounds = new Rectangle();
 				
 				//prepare event list
 				EventSet.Clear();
-				RecursiveEventAdd(Parent.CurrentScreen, EventSet, InputEventType.MWheel);
+				RecursiveEventAdd(Parent.Root, EventSet, InputEventType.MWheel);
 				
 				//perform event passing
 				foreach(Component comp in EventSet)
@@ -319,19 +282,12 @@
 					bounds.Min = (Point2D)comp.Position.Value;
 					bounds.Max = (Point2D)comp.Size.Value + bounds.Min;
 					//if within component bounds
-					if(bounds.Contains(args.Coords))
+					if(bounds.Contains(mouseCoords))
 					{
-						//make coords relative to component
-						args2.Coords = args.Coords - bounds.Min;
 						//call event
-						comp.InvokeMouseWheel(Parent, args2);
-						//auto consume if opaque
-						if(comp.InputOpaque)
-						{
-							args2.Consumed = true;
-						}
-						//break if consumed
-						if(args2.Consumed)
+						comp.InvokeMouseWheel(delta);
+						//consume if opaque
+						if(comp.InputOpaque.Value)
 						{
 							break;
 						}
@@ -340,17 +296,18 @@
 			}
 		}
 		
-		internal void KeyPressEvent(object sender, KeyEventArgs args)
+		internal void KeyPressEvent(KeyboardButton button)
 		{
-			if(Parent.CurrentScreen != null)
+			if(Parent.Root != null)
 			{
-				//create new args
-				KeyEventArgs args2 = new KeyEventArgs(args);
+				Point2D mouseCoords = Parent.MousePosition;
 				Rectangle bounds = new Rectangle();
 				
 				//prepare event list
 				EventSet.Clear();
-				RecursiveEventAdd(Parent.CurrentScreen, EventSet, InputEventType.KPress);
+				RecursiveEventAdd(Parent.Root, EventSet, InputEventType.KPress);
+				
+				bool consumed = false;
 				
 				//perform event passing
 				foreach(Component comp in EventSet)
@@ -359,48 +316,45 @@
 					bounds.Min = (Point2D)comp.Position.Value;
 					bounds.Max = (Point2D)comp.Size.Value + bounds.Min;
 					//if within component bounds
-					if(bounds.Contains(MouseCoords))
+					if(bounds.Contains(mouseCoords))
 					{
 						//call event
-						comp.InvokeKeyPress(Parent, args2);
+						comp.InvokeKeyPress(button);
 						//add to components waiting on release
-						KeyboardActiveComponents.Add(args.Button, comp);
-						//auto consume if opaque
-						if(comp.InputOpaque)
+						KeyboardActiveComponents.Add(button, comp);
+						//consume if opaque
+						if(comp.InputOpaque.Value)
 						{
-							args2.Consumed = true;
-						}
-						//break if consumed
-						if(args2.Consumed)
-						{
+							consumed = true;
 							break;
 						}
 					}
 				}
 				
 				//if unconsumed, give to focused
-				if(!args2.Consumed && FocusedComponent != null)
+				if(!consumed && FocusedComponent != null)
 				{
-					FocusedComponent.InvokeKeyPress(Parent, args2);
+					FocusedComponent.InvokeKeyPress(button);
 				}
 			}
 		}
 		
-		internal void KeyReleaseEvent(object sender, KeyEventArgs args)
+		internal void KeyReleaseEvent(KeyboardButton button)
 		{
-			if(Parent.CurrentScreen != null)
+			if(Parent.Root != null)
 			{
-				//create new args
-				KeyEventArgs args2 = new KeyEventArgs(args);
+				Point2D mouseCoords = Parent.MousePosition;
 				Rectangle bounds = new Rectangle();
 				
 				//store all components that are guaranteed a call
 				ActiveComponents.Clear();
-				ActiveComponents.UnionWith(KeyboardActiveComponents[args.Button]);
+				ActiveComponents.UnionWith(KeyboardActiveComponents.GetValues(button));
 				
 				//prepare event list
 				EventSet.Clear();
-				RecursiveEventAdd(Parent.CurrentScreen, EventSet, InputEventType.KRelease);
+				RecursiveEventAdd(Parent.Root, EventSet, InputEventType.KRelease);
+				
+				bool consumed = false;
 				
 				//perform event passing
 				foreach(Component comp in EventSet)
@@ -409,29 +363,25 @@
 					bounds.Min = (Point2D)comp.Position.Value;
 					bounds.Max = (Point2D)comp.Size.Value + bounds.Min;
 					//if within component bounds
-					if(bounds.Contains(MouseCoords))
+					if(bounds.Contains(mouseCoords))
 					{
 						//call event
-						comp.InvokeKeyRelease(Parent, args2);
+						comp.InvokeKeyRelease(button);
 						//remove from active components (we don't care if it doesn't contain the element, it'll just do nothing)
 						ActiveComponents.Remove(comp);
-						//auto consume if opaque
-						if(comp.InputOpaque)
+						//consume if opaque
+						if(comp.InputOpaque.Value)
 						{
-							args2.Consumed = true;
-						}
-						//break if consumed
-						if(args2.Consumed)
-						{
+							consumed = true;
 							break;
 						}
 					}
 				}
 				
 				//if unconsumed, give to focused
-				if(!args2.Consumed && FocusedComponent != null)
+				if(!consumed && FocusedComponent != null)
 				{
-					FocusedComponent.InvokeKeyRelease(Parent, args2);
+					FocusedComponent.InvokeKeyRelease(button);
 				}
 				
 				//satisfy waiting components
@@ -441,26 +391,27 @@
 					if(comp.HasListeners(InputEventType.KRelease))
 					{
 						//call event
-						comp.InvokeKeyRelease(Parent, args2);
+						comp.InvokeKeyRelease(button);
 					}
 				}
 				
 				//remove all waiters
-				KeyboardActiveComponents.Clear(args.Button);
+				KeyboardActiveComponents.Clear(button);
 			}
 		}
 		
-		internal void CharTypedEvent(object sender, CharEventArgs args)
+		internal void CharTypedEvent(char c, bool repeat)
 		{
-			if(Parent.CurrentScreen != null)
+			if(Parent.Root != null)
 			{
-				//create new args
-				CharEventArgs args2 = new CharEventArgs(args);
+				Point2D mouseCoords = Parent.MousePosition;
 				Rectangle bounds = new Rectangle();
 				
 				//prepare event list
 				EventSet.Clear();
-				RecursiveEventAdd(Parent.CurrentScreen, EventSet, InputEventType.CTyped);
+				RecursiveEventAdd(Parent.Root, EventSet, InputEventType.CTyped);
+				
+				bool consumed = false;
 				
 				//perform event passing
 				foreach(Component comp in EventSet)
@@ -469,27 +420,23 @@
 					bounds.Min = (Point2D)comp.Position.Value;
 					bounds.Max = (Point2D)comp.Size.Value + bounds.Min;
 					//if within component bounds
-					if(bounds.Contains(MouseCoords))
+					if(bounds.Contains(mouseCoords))
 					{
 						//call event
-						comp.InvokeCharTyped(Parent, args2);
-						//auto consume if opaque
-						if(comp.InputOpaque)
+						comp.InvokeCharTyped(c, repeat);
+						//consume if opaque
+						if(comp.InputOpaque.Value)
 						{
-							args2.Consumed = true;
-						}
-						//break if consumed
-						if(args2.Consumed)
-						{
+							consumed = true;
 							break;
 						}
 					}
 				}
 				
 				//if unconsumed, give to focused
-				if(!args2.Consumed && FocusedComponent != null)
+				if(!consumed && FocusedComponent != null)
 				{
-					FocusedComponent.InvokeCharTyped(Parent, args2);
+					FocusedComponent.InvokeCharTyped(c, repeat);
 				}
 			}
 		}
@@ -502,9 +449,9 @@
 		/// <param name="type">The type of event</param>
 		private void RecursiveEventAdd(Component comp, ICollection<Component> collection, InputEventType type)
 		{
-			if(comp.InputVisible)
+			if(comp.InputVisible.Value)
 			{
-				if(!comp.InputHidden && comp.HasListeners(type))
+				if(!comp.InputHidden.Value && comp.HasListeners(type))
 				{
 					collection.Add(comp);
 				}

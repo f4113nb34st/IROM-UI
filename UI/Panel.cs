@@ -15,15 +15,10 @@
 		/// </summary>
 		public readonly Dynx<ARGB> Color = new Dynx<ARGB>();
 		
-		public Panel(Component parent) : this(parent, false)
-		{
-			
-		}
-		
-		public Panel(Component parent, bool bypass) : base(parent, bypass)
+		public Panel()
 		{
 			Color.Value = ARGB.Clear;
-			Color.Subscribe(MarkDirty);
+			Color.OnUpdate += MarkDirty;
 		}
 		
 		protected override void Render(Image image)

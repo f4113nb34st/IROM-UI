@@ -23,7 +23,7 @@
 				BaseUseMarker = value;
 				MarkerState = BaseUseMarker;
 				MarkerTime = 0;
-				Dirty = true;
+				Dirty.Value = true;
 			}
 		}
 		
@@ -32,51 +32,46 @@
 		/// </summary>
 		public volatile int MarkerPosition;
 		
-		public TextBox(Component parent, string txt) : this(parent, false, txt)
+		public TextBox() : this(null)
 		{
-			Text.Subscribe(() => MarkerPosition = Math.Min(MarkerPosition, Text.Value.Length));
+			
 		}
 		
-		public TextBox(Component parent, bool bypass, string txt) : base(parent, bypass, txt)
+		public TextBox(string text) : base(text)
 		{
-			OnFocusChange += (sender, focused) =>
-			{
-				if(UseMarker)
+			Text.OnUpdate += () => MarkerPosition = Math.Min(MarkerPosition, Text.Value.Length);
+			IsFocused.OnUpdate += () =>
+            {
+            	if(UseMarker)
 				{
-					MarkerState = focused;
+					MarkerState = IsFocused.Value;
 					MarkerTime = 0;
-					Dirty = true;
+					Dirty.Value = true;
 				}
-			};
+            };
 			MarkerPosition = Text.Value.Length;
 			//dummy mouse press handler so we get focus
-			OnMousePress += (sender, e) => {};
-			OnKeyPress += (sender, args) =>
+			OnMousePress += button => {};
+			OnKeyPress += button =>
 			{
-				if(args.Button == KeyboardButton.LEFT)
+				if(button == KeyboardButton.LEFT)
 				{
 					if(MarkerPosition > 0)
 					{
 						MarkerPosition--;
-						Dirty = true;
-						args.Consumed = true;
+						Dirty.Value = true;
 					}
 				}else
-				if(args.Button == KeyboardButton.RIGHT)
+				if(button == KeyboardButton.RIGHT)
 				{
 					if(MarkerPosition < Text.Value.Length)
 					{
 						MarkerPosition++;
-						Dirty = true;
-						args.Consumed = true;
+						Dirty.Value = true;
 					}
 				}
 			};
-			OnCharTyped += (sender, args) => 
-			{
-				args.Consumed = true;
-				ProcessCharacter(args.Character);
-			};
+			OnCharTyped += (c, repeat) => ProcessCharacter(c);
 		}
 		
 		public virtual void ProcessCharacter(char c)
@@ -101,14 +96,14 @@
 			base.Tick(dt);
 			if(UseMarker)
 			{
-				if(IsFocused)
+				if(IsFocused.Value)
 				{
 					MarkerTime += dt;
 					while(MarkerTime >= .5)
 					{
 						MarkerTime -= .5;
 						MarkerState = !MarkerState;
-						Dirty = true;
+						Dirty.Value = true;
 					}
 				}
 			}
@@ -117,7 +112,7 @@
 		// disable once RedundantOverridenMember
 		protected override void Render(Image image)
 		{
-			base.Render(image, UseMarker && IsFocused && MarkerState, MarkerPosition);
+			base.Render(image, UseMarker && IsFocused.Value && MarkerState, MarkerPosition);
 		}
 	}
 }

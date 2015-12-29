@@ -8,7 +8,8 @@
 	/// </summary>
 	public class Icon : Component
 	{
-		private Image BaseImage;
+		//backing var
+		private Image currentImage;
 		
 		/// <summary>
 		/// The current <see cref="Image"/> of this <see cref="Icon"/>
@@ -17,37 +18,39 @@
 		{
 			get
 			{
-				return BaseImage;
+				return currentImage;
 			}
 			set
 			{
-				BaseImage = value;
-				Dirty = true;
+				currentImage = value;
+				MarkDirty();
 			}
 		}
 		
-		public Icon(Component parent, Image image) : this(parent, false, image)
+		public Icon() : this(null)
 		{
-			
 		}
 		
-		public Icon(Component parent, bool bypass, Image image) : base(parent, bypass)
+		public Icon(Image image)
 		{
 			CurrentImage = image;
 		}
 		
 		protected override void Render(Image image)
 		{
-			double dx = BaseImage.Width / (double)image.Width;
-			double dy = BaseImage.Height / (double)image.Height;
-			
-			double x = 0;
-			for(int i = 0; i < image.Width; i++, x += dx)
+			if(CurrentImage != null)
 			{
-				double y = 0;
-				for(int j = 0; j < image.Height; j++, y += dy)
+				double dx = CurrentImage.Width / (double)image.Width;
+				double dy = CurrentImage.Height / (double)image.Height;
+				
+				double x = 0;
+				for(int i = 0; i < image.Width; i++, x += dx)
 				{
-					image[i, j] = BaseImage[(int)x, (int)y];
+					double y = 0;
+					for(int j = 0; j < image.Height; j++, y += dy)
+					{
+						image[i, j] = CurrentImage[(int)x, (int)y];
+					}
 				}
 			}
 		}

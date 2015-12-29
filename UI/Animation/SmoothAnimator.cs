@@ -50,8 +50,8 @@
 		
 		public SmoothAnimator()
 		{
-			Mu.AddFilter(d => Math.Min(d, 1));
-			CurrentValue.Exp = x => Interpolation.Cosine(Start.Value, End.Value, Mu.Value);
+			Mu.OnFilter += d => Math.Min(d, 1);
+			CurrentValue.Exp = () => Interpolation.Cosine(Start.Value, End.Value, Mu.Value);
 		}
 		
 		/// <summary>
@@ -62,13 +62,7 @@
 		{
 			if(Mu.Value < 1)
 			{
-				if(double.IsPositiveInfinity(percentage))
-				{
-					Mu.Value = 1;
-				}else
-				{
-					Mu.Value += percentage;
-				}
+				Mu.Value += percentage;
 			}
 		}
 	}

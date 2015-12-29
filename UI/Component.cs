@@ -8,16 +8,36 @@
 	/// A part of a GUI. Example components include buttons, panels, and labels.
 	/// </summary>
 	public abstract class Component
-	{
+	{	
 		/// <summary>
-		/// The parent <see cref="Component"/>.
+		/// Null parent value to prevent NullPointerExceptions for parent refering Dynxs.
 		/// </summary>
-		public readonly Component Parent;
+		public static readonly Component NULL_PARENT;
+		
+		static Component()
+		{
+			NULL_PARENT = new Panel();
+			NULL_PARENT.Position.Value = 0;
+			NULL_PARENT.ZCoord.Value = 0;
+			NULL_PARENT.Size.Value = 0;
+			NULL_PARENT.Clip.Value = new Rectangle{Min = int.MinValue, Max = int.MaxValue};
+			NULL_PARENT.FrameObj.Value = Frame.NULL_FRAME;
+		}
+		
+		/// <summary>
+		/// The parent of this <see cref="Component"/>
+		/// </summary>
+		public readonly Dynx<Component> Parent = new Dynx<Component>();
+		
+		/// <summary>
+		/// Saves previous parent value for unsubscription.
+		/// </summary>
+		private Component prevParent = NULL_PARENT;
 		
 		/// <summary>
 		/// The child component list.
 		/// </summary>
-		public readonly LocklessLinkedList<Component> Children = new LocklessLinkedList<Component>();
+		public readonly FastLinkedList<Component> Children = new FastLinkedList<Component>();
 		
 		/// <summary>
 		/// The position of this <see cref="Component"/>. By default equal to the parent's position.
@@ -25,114 +45,70 @@
 		public readonly Dynx<Vec2D> Position = new Dynx<Vec2D>();
 		
 		/// <summary>
+		/// The size of this <see cref="Component"/>. By default equal to the parent's size.
+		/// </summary>
+		public readonly Dynx<Vec2D> Size = new Dynx<Vec2D>();
+		
+		/// <summary>
 		/// The z coordinate of this <see cref="Component"/>. Indicates rendering order (bigger on top). By default 1 greater than its parent.
 		/// </summary>
 		public readonly Dynx<double> ZCoord = new Dynx<double>();
 		
 		/// <summary>
-		/// Gets or sets the size of this <see cref="Component"/>. By default equal to the parent's size.
-		/// </summary>
-		public readonly Dynx<Vec2D> Size = new Dynx<Vec2D>();
-		
-		/// <summary>
-		/// Gets or sets the clipping bounds of this <see cref="Component"/>.
+		/// The clipping bounds of this <see cref="Component"/>.
 		/// </summary>
 		public readonly Dynx<Rectangle> Clip = new Dynx<Rectangle>();
 		
-		//backing vars
-		private bool isFocused;
-		private volatile bool visible = true;
-		private volatile bool hidden = false;
-		private volatile bool dirty = true;
-		
 		/// <summary>
 		/// The master <see cref="Frame"/>.
 		/// </summary>
-		public virtual Frame MasterFrame
-		{
-			get
-			{
-				return Parent != null ? Parent.MasterFrame : null;
-			}
-		}
+		public readonly Dynx<Frame> FrameObj = new Dynx<Frame>();
 		
 		/// <summary>
-		/// The master <see cref="Frame"/>.
+		/// True if this <see cref="Component"/> will be re-rendered next frame.
 		/// </summary>
-		public virtual Screen MasterScreen
-		{
-			get
-			{
-				return Parent != null ? Parent.MasterScreen : null;
-			}
-		}
+		public readonly Dynx<bool> Dirty = new Dynx<bool>();
 		
 		/// <summary>
 		/// False if this <see cref="Component"/> should not be rendered. Hides children as well.
-		/// Also prevents receiving input events.
 		/// </summary>
-		public bool Visible
-		{
-			get{return visible;}
-			set
-			{
-				visible = value;
-				MarkFrameDirty();
-			}
-		}
+		public readonly Dynx<bool> Visible = new Dynx<bool>();
 		
 		/// <summary>
 		/// True if this <see cref="Component"/> should not be rendered. Does not hide children.
-		/// Also prevents receiving input events.
 		/// </summary>
-		public bool Hidden
-		{
-			get{return hidden;}
-			set
-			{
-				hidden = value;
-				MarkFrameDirty();
-			}
-		}
-		
-		/// <summary>
-		/// True if this <see cref="Component"/> should be re-rendered next frame.
-		/// </summary>
-		public virtual bool Dirty
-		{
-			get{return dirty;}
-			set
-			{
-				dirty = value;
-				if(dirty) MarkFrameDirty();
-			}
-		}
-		
-		/// <summary>
-		/// True if the component is rendered to a buffer and blitted to the screen instead of directly rendered.
-		/// Faster, but does not support incomplete opacity.
-		/// </summary>
-		public bool Buffered = true;
+		public readonly Dynx<bool> Hidden = new Dynx<bool>();
 		
 		/// <summary>
 		/// True if this <see cref="Component"/> is completely visually opaque.
 		/// </summary>
-		public bool Opaque = true;
+		public readonly Dynx<bool> Opaque = new Dynx<bool>();
 		
 		/// <summary>
 		/// False if this <see cref="Component"/> cannot receive input events. Hides children as well.
 		/// </summary>
-		public bool InputVisible = true;
+		public readonly Dynx<bool> InputVisible = new Dynx<bool>();
 		
 		/// <summary>
-		/// False if this <see cref="Component"/> cannot receive input events. Does not hide children.
+		/// True if this <see cref="Component"/> cannot receive input events. Does not hide children.
 		/// </summary>
-		public bool InputHidden = false;
+		public readonly Dynx<bool> InputHidden = new Dynx<bool>();
 		
 		/// <summary>
 		/// True if this <see cref="Component"/> blocks input events from reaching obscured <see cref="Component"/>s.
 		/// </summary>
-		public bool InputOpaque = true;
+		public readonly Dynx<bool> InputOpaque = new Dynx<bool>();
+		
+		/// <summary>
+		/// True if this <see cref="Component"/> is focused.
+		/// </summary>
+		public readonly Dynx<bool> IsFocused = new Dynx<bool>(false);
+		
+		/// <summary>
+		/// True if the component is rendered to a buffer and blitted to the screen instead of directly rendered.
+		/// Faster if the rendering is more complex than a blit.
+		/// </summary>
+		public bool Buffered = true;
 		
 		/// <summary>
 		/// A "snap shot" of this component, re-rendered whenever dirty.
@@ -140,48 +116,24 @@
 		protected internal Image Rendering = new Image(1, 1);
 		
 		/// <summary>
-		/// True if this <see cref="Component"/> is focused.
-		/// </summary>
-		public bool IsFocused
-		{
-			get
-			{
-				return isFocused;
-			}
-			internal set
-			{
-				if(isFocused != value)
-				{
-					isFocused = value;
-					if(OnFocusChange != null) OnFocusChange(this, isFocused);
-				}
-			}
-		}
-		
-		/// <summary>
-		/// Invoked whenever <see cref="IsFocused"/> changes.
-		/// </summary>
-		public event EventHandler<bool> OnFocusChange;
-		
-		/// <summary>
 		/// Invoked before a render call.
 		/// </summary>
-		public event EventHandler OnPreRender;
+		public event Action OnPreRender;
 		
 		/// <summary>
 		/// Invoked after a render call.
 		/// </summary>
-		public event EventHandler OnPostRender;
+		public event Action OnPostRender;
 		
 		/// <summary>
 		/// Invoked during a tick.
 		/// </summary>
-		public event EventHandler<double> OnTick;
+		public event Action<double> OnTick;
 		
 		/// <summary>
 		/// Invoked when this <see cref="Component"/> is destroyed.
 		/// </summary>
-		public event EventHandler OnDestroy;
+		public event Action OnDestroy;
 		
 		/// <summary>
 		/// Invoked whenever a <see cref="MouseButton"/> is pressed.
@@ -189,8 +141,9 @@
 		/// pressed within the bounds of this <see cref="Component"/> and there
 		/// are no opaque <see cref="Component"/>s higher in the z order in the 
 		/// mouse location.
+		/// Argument is button that was pressed.
 		/// </summary>
-		public event EventHandler<MouseButtonEventArgs> OnMousePress;
+		public event Action<MouseButton> OnMousePress;
 		
 		/// <summary>
 		/// Invoked whenever a <see cref="MouseButton"/> is released.
@@ -199,8 +152,9 @@
 		/// are no opaque <see cref="Component"/>s higher in the z order in the 
 		/// mouse location. Also guaranteed to be called whenever this <see cref="Component"/>
 		/// previously received a mouse press event without a matching mouse release event for the same button.
+		/// Argument is button that was released.
 		/// </summary>
-		public event EventHandler<MouseButtonEventArgs> OnMouseRelease;
+		public event Action<MouseButton> OnMouseRelease;
 		
 		/// <summary>
 		/// Invoked whenever the mouse is moved.
@@ -209,8 +163,10 @@
 		/// are no opaque <see cref="Component"/>s higher in the z order in the 
 		/// mouse location. Also guaranteed to be called whenever this <see cref="Component"/>
 		/// previously received a mouse press event without a matching mouse release event for the same button.
+		/// First Argument is mouse location.
+		/// Second Argument is mouse delta.
 		/// </summary>
-		public event EventHandler<MouseMoveEventArgs> OnMouseMove;
+		public event Action<Point2D, Point2D> OnMouseMove;
 		
 		/// <summary>
 		/// Invoked whenever the mouse wheel is moved.
@@ -218,8 +174,9 @@
 		/// is rotated within the bounds of this <see cref="Component"/> and there
 		/// are no opaque <see cref="Component"/>s higher in the z order in the 
 		/// mouse location. 
+		/// Argument is mouse location.
 		/// </summary>
-		public event EventHandler<MouseWheelEventArgs> OnMouseWheel;
+		public event Action<int> OnMouseWheel;
 		
 		/// <summary>
 		/// Invoked whenever the mouse enters the bounds of this <see cref="Component"/>.
@@ -228,7 +185,7 @@
 		/// are no opaque <see cref="Component"/>s higher in the z order in the 
 		/// mouse location.
 		/// </summary>
-		public event EventHandler OnMouseEnter;
+		public event Action OnMouseEnter;
 		
 		/// <summary>
 		/// Invoked whenever the mouse leaves the bounds of this <see cref="Component"/>.
@@ -237,7 +194,7 @@
 		/// are no opaque <see cref="Component"/>s higher in the z order in the 
 		/// mouse location.
 		/// </summary>
-		public event EventHandler OnMouseExit;
+		public event Action OnMouseExit;
 		
 		/// <summary>
 		/// Invoked whenever a <see cref="KeyboardButton"/> is pressed.
@@ -249,8 +206,9 @@
 		/// (<see cref="OnKeyPress"/>, <see cref="OnKeyRelease"/>, or <see cref="OnCharTyped"/>).
 		/// <see cref="Component"/>s that do not also receive <see cref="OnMousePress"/> are not eligible for these
 		/// delayed events.
+		/// Argument is key pressed.
 		/// </summary>
-		public event EventHandler<KeyEventArgs> OnKeyPress;
+		public event Action<KeyboardButton> OnKeyPress;
 		
 		/// <summary>
 		/// Invoked whenever a <see cref="KeyboardButton"/> is released.
@@ -263,8 +221,9 @@
 		/// (<see cref="OnKeyPress"/>, <see cref="OnKeyRelease"/>, or <see cref="OnCharTyped"/>).
 		/// <see cref="Component"/>s that do not also receive <see cref="OnMousePress"/> are not eligible for these
 		/// delayed events.
+		/// Argument is key released.
 		/// </summary>
-		public event EventHandler<KeyEventArgs> OnKeyRelease;
+		public event Action<KeyboardButton> OnKeyRelease;
 		
 		/// <summary>
 		/// Invoked whenever a character is typed.
@@ -276,57 +235,144 @@
 		/// (<see cref="OnKeyPress"/>, <see cref="OnKeyRelease"/>, or <see cref="OnCharTyped"/>).
 		/// <see cref="Component"/>s that do not also receive <see cref="OnMousePress"/> are not eligible for these
 		/// delayed events.
+		/// First Argument is char typed.
+		/// Second Argument is true if a repeat from holding down key.
 		/// </summary>
-		public event EventHandler<CharEventArgs> OnCharTyped;
+		public event Action<char, bool> OnCharTyped;
 		
-		protected Component(Component parent) : this(parent, false)
+		/// <summary>
+		/// The bounds of this <see cref="Component"/>. By default equal to parent's bounds.
+		/// </summary>
+		public Rectangle Bounds
 		{
-			
+			get
+			{
+				return new Rectangle{Position = (Point2D)Position.Value, Size = (Point2D)Size.Value};
+			}
 		}
 		
-		protected Component(Component parent, bool bypass)
+		/// <summary>
+		/// Returns the current position of the mouse, local to this component.
+		/// </summary>
+		public Point2D MousePosition
 		{
-			if(parent != null)
+			get
 			{
-				if(!bypass) 
-				{
-					parent = parent.GetParentFor(this);
-				}
-				Parent = parent;
-				parent.Children.Add(this);
-				
-				//update references
-				Position.Exp = () => parent.Position.Value;
-				Size.Exp = () => parent.Size.Value;
-				ZCoord.Exp = () => parent.ZCoord.Value + 1;
-				Clip.Exp = () => parent.Clip.Value;
-			}else
-			{
-				Position.Value = 0;
-				ZCoord.Value = 0;
-				Size.Value = 0;
-				Clip.Value = new Rectangle(int.MinValue, int.MaxValue);
+				return FrameObj.Value.MousePosition - (Point2D)Position.Value;
 			}
-			Position.Subscribe(MarkFrameDirty);
-			ZCoord.Subscribe(MarkFrameDirty);
-			Size.Subscribe(MarkDirty);
-			Clip.Subscribe(MarkFrameDirty);
+		}
+		
+		/// <summary>
+		/// Saves the previous dirty region for dirtying.
+		/// </summary>
+		private Rectangle prevRegion;
+		
+		protected Component()
+		{
+			//special case for NULL_PARENT to prevent errors
+			if(NULL_PARENT == null) return;
+			
+			//init to null parent
+			Parent.Value = NULL_PARENT;
+			//don't allow null parents
+			Parent.OnFilter += comp => (comp ?? NULL_PARENT);
+			//automatically reparent
+			EnableAutoReparent();
+			//on update, update children collections
+			Parent.OnUpdate += () =>
+			{
+				OnParentChange(prevParent, Parent.Value);
+				prevParent = Parent.Value;
+			};
+			
+			//set default values
+			Position.Exp = () => Parent.Value.Position.Value;
+			Size.Exp = () => Parent.Value.Size.Value;
+			ZCoord.Exp = () => Parent.Value.ZCoord.Value + 1;
+			Clip.Exp = () => Parent.Value.Clip.Value;
+			FrameObj.Exp = () => Parent.Value.FrameObj.Value;
+			Dirty.Value = true;
+			Visible.Value = true;
+			Hidden.Value = false;
+			Opaque.Value = true;
+			InputVisible.Exp = () => Visible.Value;
+			InputHidden.Exp = () => Hidden.Value;
+			InputOpaque.Exp = () => Opaque.Value;
+			
+			//subscribe changes
+			Position.OnUpdate += MarkRegionDirty;
+			Size.OnUpdate += MarkDirty;
+			Clip.OnUpdate += MarkRegionDirty;
+			ZCoord.OnUpdate += MarkRegionDirty;
+			Visible.OnUpdate += () => MarkRegionDirty(true);
+			Hidden.OnUpdate += () => MarkRegionDirty(true);
+			Opaque.OnUpdate += MarkRegionDirty;
 		}
 		
 		~Component()
 		{
-			OnDestroy(this, EventArgs.Empty);
+			if(OnDestroy != null) OnDestroy();
 		}
 		
-		protected internal void MarkDirty()
+		/// <summary>
+		/// Enables automatic reparenting when <see cref="Parent"/> is set.
+		/// Enabled by default.
+		/// </summary>
+		public void EnableAutoReparent()
 		{
-			Dirty = true;
+			Parent.OnFilter += Reparent;
 		}
 		
-		protected internal void MarkFrameDirty()
+		/// <summary>
+		/// Disables automatic reparenting when <see cref="Parent"/> is set.
+		/// Enabled by default.
+		/// </summary>
+		public void DisableAutoReparent()
 		{
-			Frame frame = MasterFrame;
-			if(frame != null) frame.MarkDirty();
+			Parent.OnFilter -= Reparent;
+		}
+		
+		protected internal Component Reparent(Component parent)
+		{
+			return parent.GetParentFor(this);
+		}
+		
+		protected virtual void OnParentChange(Component oldParent, Component newParent)
+		{
+			if(oldParent != NULL_PARENT) oldParent.Children.Remove(this);
+			if(newParent != NULL_PARENT) newParent.Children.Add(this);
+		}
+		
+		/// <summary>
+		/// Marks this <see cref="Component"/> for re-rendering, and mark's its bounds as dirty.
+		/// </summary>
+		protected void MarkDirty()
+		{
+			Dirty.Value = true;
+			MarkRegionDirty();
+		}
+		
+		/// <summary>
+		/// Marks both this <see cref="Component"/>'s bounds and the old bounds as dirty.
+		/// Only dirties regions that might have changed.
+		/// </summary>
+		protected void MarkRegionDirty()
+		{
+			MarkRegionDirty(false);
+		}
+		
+		/// <summary>
+		/// Marks both this <see cref="Component"/>'s bounds and the old bounds as dirty.
+		/// Only dirties regions that might have changed.
+		/// </summary>
+		protected void MarkRegionDirty(bool force)
+		{
+			if((Visible.Value == true && Hidden.Value == false) || force)
+			{
+				Rectangle dirtyRegion = VectorUtil.Overlap(Bounds, Clip.Value);
+				FrameObj.Value.MarkDirty(VectorUtil.Encompass(dirtyRegion, prevRegion));
+				prevRegion = dirtyRegion;
+			}
 		}
 		
 		/// <summary>
@@ -342,19 +388,17 @@
 		
 		/// <summary>
 		/// Ticks this <see cref="Component"/>.
-		/// Ticks happen at the tickRate of the UICore.
 		/// By default calls TickChildren().
 		/// </summary>
 		/// <param name="dt">The time since the last tick.</param>
 		protected internal virtual void Tick(double dt)
 		{
-			if(OnTick != null) OnTick(this, dt);
+			if(OnTick != null) OnTick(dt);
 			TickChildren(dt);
 		}
 		
 		/// <summary>
 		/// Ticks the children of this <see cref="Component"/>.
-		/// Ticks happen at the tickRate of the UICore.
 		/// </summary>
 		/// <param name="dt">The time since the last tick.</param>
 		protected void TickChildren(double dt)
@@ -376,7 +420,7 @@
 		/// </summary>
 		protected void PreRender()
 		{
-			if(OnPreRender != null) OnPreRender(this, EventArgs.Empty);
+			if(OnPreRender != null) OnPreRender();
 		}
 		
 		/// <summary>
@@ -384,7 +428,7 @@
 		/// </summary>
 		protected void PostRender()
 		{
-			if(OnPostRender != null) OnPostRender(this, EventArgs.Empty);
+			if(OnPostRender != null) OnPostRender();
 		}
 		
 		/// <summary>
@@ -396,24 +440,25 @@
 			PreRender();
 			if(Buffered)
 			{
+				bool dirty = Dirty.Value;
 				if(Rendering.Width != Math.Max(1, (int)Math.Round(Size.Value.X)) || Rendering.Height != Math.Max(1, (int)Math.Round(Size.Value.Y)))
 				{
-					Dirty = true;
+					dirty = true;
 					Rendering.Resize(Math.Max(1, (int)Math.Round(Size.Value.X)), Math.Max(1, (int)Math.Round(Size.Value.Y)));
 				}
-				if(Dirty)
+				if(dirty)
 				{
-					Dirty = false;
+					Dirty.Value = false;
 					Render(Rendering);
 				}
-				image.SetClip(Clip.Value);
-				image.Blit(Rendering, (Point2D)Position.Value, Opaque ? RenderMode.MASK : RenderMode.BLEND);
-				image.ClearClip();
+				image.PushClip(Clip.Value);
+				image.Blit(Rendering, (Point2D)Position.Value, Opaque.Value ? RenderMode.MASK : RenderMode.BLEND);
+				image.PopClip();
 			}else
 			{
-				image.SetClip(Clip.Value);
+				image.PushClip(Clip.Value);
 				Render(image);
-				image.ClearClip();
+				image.PopClip();
 			}
 			PostRender();
 		}
@@ -435,14 +480,14 @@
 			}
 		}
 		
-		internal void InvokeMousePress(object sender, MouseButtonEventArgs args){if(OnMousePress != null) OnMousePress(sender, args);}
-		internal void InvokeMouseRelease(object sender, MouseButtonEventArgs args){if(OnMouseRelease != null) OnMouseRelease(sender, args);}
-		internal void InvokeMouseMove(object sender, MouseMoveEventArgs args){if(OnMouseMove != null) OnMouseMove(sender, args);}
-		internal void InvokeMouseWheel(object sender, MouseWheelEventArgs args){if(OnMouseWheel != null) OnMouseWheel(sender, args);}
-		internal void InvokeMouseEnter(object sender, EventArgs args){if(OnMouseEnter != null) OnMouseEnter(sender, args);}
-		internal void InvokeMouseExit(object sender, EventArgs args){if(OnMouseExit != null) OnMouseExit(sender, args);}
-		internal void InvokeKeyPress(object sender, KeyEventArgs args){if(OnKeyPress != null) OnKeyPress(sender, args);}
-		internal void InvokeKeyRelease(object sender, KeyEventArgs args){if(OnKeyRelease != null) OnKeyRelease(sender, args);}
-		internal void InvokeCharTyped(object sender, CharEventArgs args){if(OnCharTyped != null) OnCharTyped(sender, args);}
+		internal void InvokeMousePress(MouseButton button){if(OnMousePress != null) OnMousePress(button);}
+		internal void InvokeMouseRelease(MouseButton button){if(OnMouseRelease != null) OnMouseRelease(button);}
+		internal void InvokeMouseMove(Point2D coords, Point2D delta){if(OnMouseMove != null) OnMouseMove(coords, delta);}
+		internal void InvokeMouseWheel(int delta){if(OnMouseWheel != null) OnMouseWheel(delta);}
+		internal void InvokeMouseEnter(){if(OnMouseEnter != null) OnMouseEnter();}
+		internal void InvokeMouseExit(){if(OnMouseExit != null) OnMouseExit();}
+		internal void InvokeKeyPress(KeyboardButton button){if(OnKeyPress != null) OnKeyPress(button);}
+		internal void InvokeKeyRelease(KeyboardButton button){if(OnKeyRelease != null) OnKeyRelease(button);}
+		internal void InvokeCharTyped(char c, bool r){if(OnCharTyped != null) OnCharTyped(c, r);}
 	}
 }
