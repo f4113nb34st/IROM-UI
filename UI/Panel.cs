@@ -19,6 +19,7 @@
 		{
 			Color.Value = ARGB.Clear;
 			Color.OnUpdate += MarkDirty;
+			FlushBeforeUpdate(Color);
 		}
 		
 		protected override void Render(Image image)

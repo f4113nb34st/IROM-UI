@@ -10,11 +10,6 @@
 	public class Divider : Panel
 	{
 		/// <summary>
-		/// True if vertical, false if horizontal.
-		/// </summary>
-		public bool IsVertical;
-			
-		/// <summary>
 		/// The left/top color of this <see cref="Divider"/>.
 		/// </summary>
 		public readonly Dynx<ARGB> MinColor = new Dynx<ARGB>();
@@ -33,71 +28,20 @@
 		{
 			MinColor.Value = RGB.White;
 			MinColor.OnUpdate += MarkDirty;
+			FlushBeforeUpdate(MinColor);
 			
 			MaxColor.Value = RGB.White;
 			MaxColor.OnUpdate += MarkDirty;
+			FlushBeforeUpdate(MaxColor);
 			
 			EdgeInterpolation.Value = Interpolation.Linear;
 			EdgeInterpolation.OnUpdate += MarkDirty;
+			FlushBeforeUpdate(EdgeInterpolation);
 		}
 		
 		protected override void Render(Image image)
 		{
-			if(IsVertical)
-			{
-				double scale = image.Width / 2D;
-				int maxX = image.Width - 1;
-				//perform x walk
-				for(int x = 0; x < image.Width; x++)
-				{
-					double mu;
-					ARGB color;
-					//if min side
-					if(x < (maxX - x))
-					{
-						mu = x / scale;
-						color = MinColor.Value;
-					}else//if max side
-					{
-						mu = (maxX - x) / scale;
-						color = MaxColor.Value;
-					}
-					//interpolate
-					color = ColorUtil.Interpolate(color, Color.Value, mu, EdgeInterpolation.Value);
-					//fill vert scan
-					for(int y = 0; y < image.Height; y++)
-					{
-						image[x, y] = color;
-					}
-				}
-			}else
-			{
-				double scale = image.Height / 2D;
-				int maxY = image.Height - 1;
-				//perform y walk
-				for(int y = 0; y < image.Height; y++)
-				{
-					double mu;
-					ARGB color;
-					//if min side
-					if(y < (maxY - y))
-					{
-						mu = y / scale;
-						color = MinColor.Value;
-					}else//if max side
-					{
-						mu = (maxY - y) / scale;
-						color = MaxColor.Value;
-					}
-					//interpolate
-					color = ColorUtil.Interpolate(color, Color.Value, mu, EdgeInterpolation.Value);
-					//fill hori scan
-					for(int x = 0; x < image.Width; x++)
-					{
-						image[x, y] = color;
-					}
-				}
-			}
+			RenderUtil.RenderDivider(image, Bounds, MinColor.Value, Color.Value, MaxColor.Value, EdgeInterpolation.Value);
 		}
 	}
 }

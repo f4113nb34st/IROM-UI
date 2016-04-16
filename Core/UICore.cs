@@ -9,30 +9,27 @@
     /// </summary>
 	public abstract class UICore : Core
 	{
-		protected UICore(String title) : base(title, typeof(DoubleBufferStrategy))
+		protected UICore(String title) : this(title, 60){}
+		
+		protected UICore(String title, double tickRate) : base(title, tickRate, typeof(TripleBufferStrategy))
         {
-			UIFrame = new Frame(WindowObj);
-			UIFrame.OnDirtyChange += MarkDirty;
+			RootObj = new Root(WindowObj);
+			RootObj.Dirty.OnUpdate += () => {if(RootObj.Dirty.Value) MarkDirty();};
 			AutoDirty = false;
+			//initial dirty to get started
+			MarkDirty();
 		}
 		
-		protected UICore(String title, double tickRate) : base(title, tickRate, typeof(DoubleBufferStrategy))
-        {
-			UIFrame = new Frame(WindowObj);
-			UIFrame.OnDirtyChange += MarkDirty;
-			AutoDirty = false;
-		}
-		
-		protected Frame UIFrame;
+		protected readonly Root RootObj;
 		
 		protected override void Tick(double deltaTime)
 		{
-			UIFrame.Tick(deltaTime);
+			RootObj.Tick(deltaTime);
 		}
 		
         protected override void Render(Image image)
         {
-        	UIFrame.Render(image);
+        	RootObj.RootRender(image);
         }
 	}
 }

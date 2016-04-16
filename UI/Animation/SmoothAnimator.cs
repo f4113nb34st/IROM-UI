@@ -23,6 +23,12 @@
 			{
 				return CurrentValue.Value;
 			}
+			set
+			{
+				Start.Value = CurrentValue.Value;
+				End.Value = value;
+				Mu.Value = 1;
+			}
 		}
 		
 		/// <summary>

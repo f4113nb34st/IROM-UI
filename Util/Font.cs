@@ -199,7 +199,7 @@
 		
 		private void DrawRender(Image image, Point2D position, FontRender render, ARGB color)
 		{
-			Rectangle view = VectorUtil.Overlap((Rectangle)image.Size, ((Rectangle)render.Size) + position, image.GetClip());
+			Rectangle view = ShapeUtil.Overlap((Rectangle)image.Size, ((Rectangle)render.Size) + position, image.GetClip());
 			for(int i = view.Min.X; i < view.Max.X; i++)
 			{
 				for(int j = view.Min.Y; j < view.Max.Y; j++)
@@ -236,18 +236,13 @@
 			}
 		}
 		
-		private class FontRender : DataMap2D<float>
+		private class FontRender : DataMap<float>
 		{
 			private float[,] Data;
 			
 			public FontRender(int width, int height) : base(width, height)
 			{
 				
-			}
-			
-			public override object GetChannelManager()
-			{
-				throw new NotImplementedException();
 			}
 			
 			public new float this[int x, int y]

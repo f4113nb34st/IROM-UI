@@ -9,30 +9,27 @@
     /// </summary>
 	public abstract class UIMultiCore : MultiCore
 	{
-		protected UIMultiCore(String title) : base(title, typeof(DoubleBufferStrategy))
-        {
-			UIFrame = new Frame(WindowObj);
-			UIFrame.OnDirtyChange += MarkDirty;
-			AutoDirty = false;
-		}
+		protected UIMultiCore(String title) : this(title, 60){}
 		
 		protected UIMultiCore(String title, double tickRate) : base(title, tickRate, typeof(DoubleBufferStrategy))
         {
-			UIFrame = new Frame(WindowObj);
-			UIFrame.OnDirtyChange += MarkDirty;
+			RootObj = new Root(WindowObj);
+			RootObj.Dirty.OnUpdate += () => {if(RootObj.Dirty.Value) MarkDirty();};
 			AutoDirty = false;
+			//initial dirty to get started
+			MarkDirty();
 		}
 		
-		protected Frame UIFrame;
+		protected Root RootObj;
 		
 		protected override void Tick(double deltaTime)
 		{
-			UIFrame.Tick(deltaTime);
+			RootObj.Tick(deltaTime);
 		}
 		
         protected override void Render(Image image)
         {
-        	UIFrame.Render(image);
+        	RootObj.RootRender(image);
         }
 	}
 }

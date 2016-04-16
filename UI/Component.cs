@@ -1,6 +1,7 @@
 ﻿namespace IROM.UI
 {
 	using System;
+	using System.Threading;
 	using IROM.Util;
 	using IROM.Dynamix;
 	
@@ -12,17 +13,7 @@
 		/// <summary>
 		/// Null parent value to prevent NullPointerExceptions for parent refering Dynxs.
 		/// </summary>
-		public static readonly Component NULL_PARENT;
-		
-		static Component()
-		{
-			NULL_PARENT = new Panel();
-			NULL_PARENT.Position.Value = 0;
-			NULL_PARENT.ZCoord.Value = 0;
-			NULL_PARENT.Size.Value = 0;
-			NULL_PARENT.Clip.Value = new Rectangle{Min = int.MinValue, Max = int.MaxValue};
-			NULL_PARENT.FrameObj.Value = Frame.NULL_FRAME;
-		}
+		public static readonly Component NULL_PARENT = new Root();
 		
 		/// <summary>
 		/// The parent of this <see cref="Component"/>
@@ -42,12 +33,12 @@
 		/// <summary>
 		/// The position of this <see cref="Component"/>. By default equal to the parent's position.
 		/// </summary>
-		public readonly Dynx<Vec2D> Position = new Dynx<Vec2D>();
+		public readonly Dynx<Point2D> Position = new Dynx<Point2D>();
 		
 		/// <summary>
 		/// The size of this <see cref="Component"/>. By default equal to the parent's size.
 		/// </summary>
-		public readonly Dynx<Vec2D> Size = new Dynx<Vec2D>();
+		public readonly Dynx<Point2D> Size = new Dynx<Point2D>();
 		
 		/// <summary>
 		/// The z coordinate of this <see cref="Component"/>. Indicates rendering order (bigger on top). By default 1 greater than its parent.
@@ -60,9 +51,9 @@
 		public readonly Dynx<Rectangle> Clip = new Dynx<Rectangle>();
 		
 		/// <summary>
-		/// The master <see cref="Frame"/>.
+		/// The master <see cref="Root"/>.
 		/// </summary>
-		public readonly Dynx<Frame> FrameObj = new Dynx<Frame>();
+		public readonly Dynx<Root> RootObj = new Dynx<Root>();
 		
 		/// <summary>
 		/// True if this <see cref="Component"/> will be re-rendered next frame.
@@ -102,7 +93,12 @@
 		/// <summary>
 		/// True if this <see cref="Component"/> is focused.
 		/// </summary>
-		public readonly Dynx<bool> IsFocused = new Dynx<bool>(false);
+		public readonly Dynx<bool> IsFocused = new Dynx<bool>();
+		
+		/// <summary>
+		/// The cursor applied when this <see cref="Component"/> is hovered over.
+		/// </summary>
+		public readonly Dynx<Cursor> HoverCursor = new Dynx<Cursor>();
 		
 		/// <summary>
 		/// True if the component is rendered to a buffer and blitted to the screen instead of directly rendered.
@@ -113,7 +109,7 @@
 		/// <summary>
 		/// A "snap shot" of this component, re-rendered whenever dirty.
 		/// </summary>
-		protected internal Image Rendering = new Image(1, 1);
+		protected internal Image RenderBuffer = new Image(1, 1);
 		
 		/// <summary>
 		/// Invoked before a render call.
@@ -247,18 +243,31 @@
 		{
 			get
 			{
-				return new Rectangle{Position = (Point2D)Position.Value, Size = (Point2D)Size.Value};
+				return new Rectangle{Position = Position.Value, Size = Size.Value};
+			}
+			set
+			{
+				//ensure render atomic
+				lock(renderLock)
+				{
+					//also dirty atomic
+					using(DirtyAtomic())
+					{
+						Position.Value = value.Position;
+						Size.Value = value.Size;
+					}
+				}
 			}
 		}
 		
 		/// <summary>
 		/// Returns the current position of the mouse, local to this component.
 		/// </summary>
-		public Point2D MousePosition
+		public virtual Point2D MousePosition
 		{
 			get
 			{
-				return FrameObj.Value.MousePosition - (Point2D)Position.Value;
+				return RootObj.Value.MousePosition - Position.Value;
 			}
 		}
 		
@@ -267,10 +276,21 @@
 		/// </summary>
 		private Rectangle prevRegion;
 		
+		/// <summary>
+		/// Disables the automatic dirtying of bounds when it changes.
+		/// Functions as an optional optimization for making compound changes a single operation.
+		/// </summary>
+		private bool DisableAutoDirty = false;
+		
+		/// <summary>
+		/// Lock for rendering to ensure values do not change during the render
+		/// </summary>
+		protected object renderLock = new object();
+		
 		protected Component()
 		{
-			//special case for NULL_PARENT to prevent errors
-			if(NULL_PARENT == null) return;
+			//don't init roots
+			if(this is Root) return;
 			
 			//init to null parent
 			Parent.Value = NULL_PARENT;
@@ -288,9 +308,10 @@
 			//set default values
 			Position.Exp = () => Parent.Value.Position.Value;
 			Size.Exp = () => Parent.Value.Size.Value;
+			//Size.OnFilter += v => VectorUtil.Max(v, 1);
 			ZCoord.Exp = () => Parent.Value.ZCoord.Value + 1;
 			Clip.Exp = () => Parent.Value.Clip.Value;
-			FrameObj.Exp = () => Parent.Value.FrameObj.Value;
+			RootObj.Exp = () => Parent.Value.RootObj.Value;
 			Dirty.Value = true;
 			Visible.Value = true;
 			Hidden.Value = false;
@@ -298,6 +319,13 @@
 			InputVisible.Exp = () => Visible.Value;
 			InputHidden.Exp = () => Hidden.Value;
 			InputOpaque.Exp = () => Opaque.Value;
+			IsFocused.Value = false;
+			HoverCursor.Value = Cursor.UNSPECIFIED;
+			
+			//add render flushes
+			FlushBeforeUpdate(Position);
+			FlushBeforeUpdate(Size);
+			FlushBeforeUpdate(IsFocused);
 			
 			//subscribe changes
 			Position.OnUpdate += MarkRegionDirty;
@@ -307,11 +335,41 @@
 			Visible.OnUpdate += () => MarkRegionDirty(true);
 			Hidden.OnUpdate += () => MarkRegionDirty(true);
 			Opaque.OnUpdate += MarkRegionDirty;
+			
+			//add prevRegion updater
+			OnPreRender += () => Monitor.Enter(renderLock);
+			OnPostRender += () => Monitor.Exit(renderLock);
+			OnPreRender += () => prevRegion = ShapeUtil.Overlap(Bounds, Clip.Value);
 		}
 		
 		~Component()
 		{
 			if(OnDestroy != null) OnDestroy();
+		}
+		
+		/// <summary>
+		/// Allows a group of operations to be atomic with respect to dirtying.
+		/// To use, simple wrap in using(DirtyAtomic()).
+		/// Optional optimization.
+		/// </summary>
+		protected IDisposable DirtyAtomic()
+		{
+			DisableAutoDirty = true;
+			return (LambdaDisposable)(() =>
+			{
+				DisableAutoDirty = false;
+				MarkRegionDirty();
+			});
+		}
+		
+		/// <summary>
+		/// Marks a <see cref="Dynx"/> variable for use in <see cref="Render"/> forces a flush of current renders before the value updates.
+		/// </summary>
+		/// <param name="dynx">The variable.</param>
+		protected void FlushBeforeUpdate<T>(Dynx<T> dynx)
+		{
+			//just dummy lock to ensure render not currently happening
+			dynx.OnFilter += v => {lock(renderLock){return v;}};
 		}
 		
 		/// <summary>
@@ -348,6 +406,7 @@
 		/// </summary>
 		protected void MarkDirty()
 		{
+			if(DisableAutoDirty) return;
 			Dirty.Value = true;
 			MarkRegionDirty();
 		}
@@ -363,16 +422,32 @@
 		
 		/// <summary>
 		/// Marks both this <see cref="Component"/>'s bounds and the old bounds as dirty.
-		/// Only dirties regions that might have changed.
 		/// </summary>
 		protected void MarkRegionDirty(bool force)
 		{
+			if(DisableAutoDirty) return;
 			if((Visible.Value == true && Hidden.Value == false) || force)
 			{
-				Rectangle dirtyRegion = VectorUtil.Overlap(Bounds, Clip.Value);
-				FrameObj.Value.MarkDirty(VectorUtil.Encompass(dirtyRegion, prevRegion));
-				prevRegion = dirtyRegion;
+				Rectangle dirtyRegion = ShapeUtil.Overlap(Bounds, Clip.Value);
+				RootObj.Value.MarkDirty(ShapeUtil.Encompass(dirtyRegion, prevRegion));
 			}
+		}
+		
+		/// <summary>
+		/// Grabs this <see cref="Component"/> for later dropping.
+		/// </summary>
+		public void Grab()
+		{
+			RootObj.Value.InputHandler.Grab(this);
+		}
+		
+		/// <summary>
+		/// Drops this <see cref="Component"/> onto the first <see cref="IDropZone"/> at the mouse coordinates.
+		/// </summary>
+		/// <returns>True if there was a <see cref="IDropZone"/> to receive it.</returns>
+		public bool Drop()
+		{
+			return RootObj.Value.InputHandler.Drop(this);
 		}
 		
 		/// <summary>
@@ -410,7 +485,7 @@
 		}
 		
 		/// <summary>
-		/// Renders this <see cref="Component"/> to the given image.
+		/// Renders this <see cref="Component"/> on the given image.
 		/// </summary>
 		/// <param name="image">The render target.</param>
 		protected abstract void Render(Image image);
@@ -441,18 +516,20 @@
 			if(Buffered)
 			{
 				bool dirty = Dirty.Value;
-				if(Rendering.Width != Math.Max(1, (int)Math.Round(Size.Value.X)) || Rendering.Height != Math.Max(1, (int)Math.Round(Size.Value.Y)))
+				if(RenderBuffer.Size != Size.Value)
 				{
 					dirty = true;
-					Rendering.Resize(Math.Max(1, (int)Math.Round(Size.Value.X)), Math.Max(1, (int)Math.Round(Size.Value.Y)));
+					RenderBuffer.Resize(Size.Value.X, Size.Value.Y);
 				}
 				if(dirty)
 				{
 					Dirty.Value = false;
-					Render(Rendering);
+					Render(RenderBuffer);
 				}
 				image.PushClip(Clip.Value);
-				image.Blit(Rendering, (Point2D)Position.Value, Opaque.Value ? RenderMode.MASK : RenderMode.BLEND);
+				//TODO
+				//image.Blit(RenderBuffer, Position.Value, Opaque.Value ? RenderMode.MASK : RenderMode.BLEND);
+				image.Blit(RenderBuffer, Position.Value);
 				image.PopClip();
 			}else
 			{

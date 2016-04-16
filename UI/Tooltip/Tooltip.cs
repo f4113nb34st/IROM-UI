@@ -34,14 +34,14 @@
 			
 			Dynx<bool> flipX = new Dynx<bool>();
 			Dynx<bool> flipY = new Dynx<bool>();
-			flipX.Exp = () => (Parent.Value.Position.Value.X + mouseCoords.Value.X + 16 + Size.Value.X) > this.FrameObj.Value.Size.Value.X;
-			flipY.Exp = () => (Parent.Value.Position.Value.Y + mouseCoords.Value.Y + 16 + Size.Value.Y) > this.FrameObj.Value.Size.Value.Y;
+			flipX.Exp = () => (Parent.Value.Position.Value.X + mouseCoords.Value.X + 16 + Size.Value.X) > this.RootObj.Value.Size.Value.X;
+			flipY.Exp = () => (Parent.Value.Position.Value.Y + mouseCoords.Value.Y + 16 + Size.Value.Y) > this.RootObj.Value.Size.Value.Y;
 			
 			Position.Exp = () =>
 			{
-				double x = mouseCoords.Value.X + 16 + ((!flipX.Value ? 0 : -1) * (Size.Value.X + 16));
-				double y = mouseCoords.Value.Y + 16 + ((!flipY.Value ? 0 : -1) * (Size.Value.Y + 16));
-				return new Vec2D(x, y);
+				int x = mouseCoords.Value.X + 16 + ((!flipX.Value ? 0 : -1) * (Size.Value.X + 16));
+				int y = mouseCoords.Value.Y + 16 + ((!flipY.Value ? 0 : -1) * (Size.Value.Y + 16));
+				return new Point2D(x, y);
 			};
 		}
 		

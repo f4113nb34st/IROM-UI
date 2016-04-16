@@ -72,6 +72,7 @@
 				}
 			};
 			OnCharTyped += (c, repeat) => ProcessCharacter(c);
+			HoverCursor.Value = Cursor.I_BEAM;
 		}
 		
 		public virtual void ProcessCharacter(char c)
