@@ -370,7 +370,7 @@
 		{
 			//cleverly use filter as a form of preUpdate event
 			dynx.OnFilter += v => {Monitor.Enter(renderLock); return v;};
-			dynx.OnUpdate += v => Monitor.Exit(renderLock);
+			dynx.OnUpdate += () => Monitor.Exit(renderLock);
 		}
 		
 		/// <summary>
