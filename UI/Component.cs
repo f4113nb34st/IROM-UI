@@ -308,7 +308,7 @@
 			//set default values
 			Position.Exp = () => Parent.Value.Position.Value;
 			Size.Exp = () => Parent.Value.Size.Value;
-			//Size.OnFilter += v => VectorUtil.Max(v, 1);
+			Size.OnFilter += v => VectorUtil.Max(v, 1);
 			ZCoord.Exp = () => Parent.Value.ZCoord.Value + 1;
 			Clip.Exp = () => Parent.Value.Clip.Value;
 			RootObj.Exp = () => Parent.Value.RootObj.Value;
@@ -368,8 +368,9 @@
 		/// <param name="dynx">The variable.</param>
 		protected void FlushBeforeUpdate<T>(Dynx<T> dynx)
 		{
-			//just dummy lock to ensure render not currently happening
-			dynx.OnFilter += v => {lock(renderLock){return v;}};
+			//cleverly use filter as a form of preUpdate event
+			dynx.OnFilter += v => {Monitor.Enter(renderLock); return v;};
+			dynx.OnUpdate += v => Monitor.Exit(renderLock);
 		}
 		
 		/// <summary>
