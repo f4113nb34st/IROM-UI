@@ -44,13 +44,8 @@
 			{
 				Start.Value = CurrentValue.Value;
 				End.Value = value;
-				if(Start.Value != End.Value)
-				{
-					Mu.Value = 0;
-				}else
-				{
-					Mu.Value = 1;
-				}
+				if(Start.Value != End.Value) Mu.Value = 0;
+				else 						 Mu.Value = 1;
 			}
 		}
 		
@@ -66,10 +61,7 @@
 		/// <param name="percentage">Percentage of animation to increment [0,1]</param>
 		public void Tick(double percentage)
 		{
-			if(Mu.Value < 1)
-			{
-				Mu.Value += percentage;
-			}
+			if(Mu.Value < 1) Mu.Value += percentage;
 		}
 	}
 }

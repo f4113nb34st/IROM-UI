@@ -20,15 +20,18 @@
 		/// <param name="rect">The region to add.</param>
 		public void Add(Rectangle rect)
 		{
-			foreach(DoubleNode<Rectangle> node in regions.GetNodes())
+			lock(regions)
 			{
-				if(ShapeUtil.Overlap(rect, node.Value).IsValid())
+				foreach(DoubleNode<Rectangle> node in regions.GetNodes())
 				{
-					node.Value = ShapeUtil.Encompass(rect, node.Value);
-					return;
+					if(ShapeUtil.Overlap(rect, node.Value).IsValid())
+					{
+						node.Value = ShapeUtil.Encompass(rect, node.Value);
+						return;
+					}
 				}
+				regions.Add(rect);
 			}
-			regions.Add(rect);
 		}
 		
 		/// <summary>
@@ -41,7 +44,12 @@
 
 		public IEnumerator<Rectangle> GetEnumerator()
 		{
-			return Interlocked.Exchange(ref regions, new FastLinkedList<Rectangle>()).GetEnumerator();
+			lock(regions)
+			{
+				FastLinkedList<Rectangle> oldList = regions;
+				regions = new FastLinkedList<Rectangle>();
+				return oldList.GetEnumerator();
+			}
 		}
 
 		System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()

@@ -368,9 +368,8 @@
 		/// <param name="dynx">The variable.</param>
 		protected void FlushBeforeUpdate<T>(Dynx<T> dynx)
 		{
-			//cleverly use filter as a form of preUpdate event
-			dynx.OnFilter += v => {Monitor.Enter(renderLock); return v;};
-			dynx.OnUpdate += () => Monitor.Exit(renderLock);
+			dynx.OnPreUpdate += () => Monitor.Enter(renderLock);
+			dynx.OnPostUpdate += () => Monitor.Exit(renderLock);
 		}
 		
 		/// <summary>
